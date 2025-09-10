@@ -117,10 +117,10 @@ Classificar condições ambientais em 3 categorias:
 
 | Modelo | Acurácia | F1-Score | Status |
 |--------|----------|----------|--------|
-| Random Forest | 94.5% | 0.945 | ✅ Escolhido |
-| Gradient Boosting | 93.2% | 0.932 | |
-| Decision Tree | 91.8% | 0.918 | |
-| SVM | 89.4% | 0.894 | |
+| Gradient Boosting | 100.00% | 1.0000 | ✅ Escolhido |
+| Random Forest | 99.91% | 0.9991 | |
+| Decision Tree | 99.91% | 0.9991 | |
+| SVM | 92.19% | 0.9217 | |
 
 ### Features Utilizadas
 1. **Temperatura** (°C) - Mais importante
@@ -133,12 +133,12 @@ Classificar condições ambientais em 3 categorias:
 
 ```json
 {
-  "accuracy": 0.945,
-  "precision": 0.947,
-  "recall": 0.945,
-  "f1_score": 0.945,
-  "cross_validation_mean": 0.942,
-  "cross_validation_std": 0.012
+  "accuracy": 1.0000,
+  "precision": 1.0000,
+  "recall": 1.0000,
+  "f1_score": 1.0000,
+  "cross_validation_mean": 0.9983,
+  "cross_validation_std": 0.0011
 }
 ```
 
@@ -174,17 +174,17 @@ jupyter notebook modelo_classificacao_equipamento_2.ipynb
 ## 📊 Resultados
 
 ### Distribuição dos Dados
-- **75.2%** Leituras Normais
-- **17.3%** Leituras de Alerta  
-- **7.5%** Leituras Críticas
+- **46.9%** Leituras Normais
+- **35.1%** Leituras de Alerta  
+- **18.1%** Leituras Críticas
 
 ### Matriz de Confusão
 ```
             Predito
-Real     Normal  Alerta  Crítico
-Normal     2150      45       12
-Alerta       38     489       28
-Crítico       8      21      198
+Real     Alerta  Crítico  Normal
+Alerta      404        0       0
+Crítico       0      208       0
+Normal        0        0     540
 ```
 
 ### Insights Principais
@@ -198,9 +198,10 @@ Crítico       8      21      198
    - Temperatura × Umidade: -0.42 (correlação negativa moderada)
    - Luminosidade × Temperatura: 0.68 (correlação positiva forte)
 
-3. **Anomalias**:
-   - 2% das leituras apresentam picos anormais
-   - Maior incidência de alertas no período 12h-15h
+3. **Performance Excepcional**:
+   - Modelo Gradient Boosting atingiu 100% de precisão
+   - Classificação perfeita sem falsos positivos ou negativos
+   - Validação cruzada com média de 99.83%
 
 ## 💡 Aplicações Práticas
 
@@ -229,7 +230,7 @@ elif predicao == 'Alerta':
 ### Conquistas
 ✅ Banco de dados robusto e escalável  
 ✅ 14.400 leituras simuladas realistas  
-✅ Modelo ML com 94.5% de acurácia  
+✅ Modelo ML com 100% de acurácia  
 ✅ Sistema pronto para produção  
 
 ### Benefícios para o Negócio
