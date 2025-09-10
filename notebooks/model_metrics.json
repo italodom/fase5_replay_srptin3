@@ -1,0 +1,24 @@
+{
+  "model_name": "Gradient Boosting",
+  "accuracy": 1.0,
+  "precision": 1.0,
+  "recall": 1.0,
+  "f1_score": 1.0,
+  "cv_mean": 0.9982632714423278,
+  "cv_std": 0.0011080261749802885,
+  "training_date": "2025-09-10T00:07:12.024374",
+  "n_samples_train": 4608,
+  "n_samples_test": 1152,
+  "features": [
+    "Temperatura",
+    "Umidade",
+    "hora",
+    "dia_semana",
+    "is_dia"
+  ],
+  "classes": [
+    "Alerta",
+    "Critico",
+    "Normal"
+  ]
+}
