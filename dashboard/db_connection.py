@@ -86,7 +86,10 @@ class DatabaseConnection:
     def _connect_sqlite(self):
         """Conecta ao SQLite"""
         try:
-            self.connection = sqlite3.connect(self.sqlite_path)
+            self.connection = sqlite3.connect(
+                self.sqlite_path,
+                check_same_thread=False  # Permite uso em múltiplas threads (necessário para Streamlit)
+            )
             print(f"✅ Conectado ao SQLite: {self.sqlite_path}")
             return True
         except Exception as e:
