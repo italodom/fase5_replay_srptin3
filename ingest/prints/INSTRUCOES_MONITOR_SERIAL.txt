@@ -1,0 +1,27 @@
+INSTRUÇÕES PARA CAPTURAR MONITOR SERIAL
+==========================================
+
+Para adicionar o arquivo monitor_serial.png:
+
+1. Acesse: https://wokwi.com/projects/433508321885341697
+
+2. Clique em "Start Simulation"
+
+3. Abra o "Serial Monitor" (ícone de terminal no canto inferior)
+
+4. Aguarde algumas leituras aparecerem (formato: temperatura,umidade)
+   Exemplo:
+   22.30,44.50
+   23.15,46.20
+   21.80,48.90
+
+5. Tire um screenshot do monitor serial mostrando pelo menos 5-10 leituras
+
+6. Salve como: monitor_serial.png nesta pasta
+
+7. Delete este arquivo de instruções
+
+==========================================
+Alternativamente, você pode:
+- Usar o Serial Plotter do Wokwi
+- Fazer print do Arduino IDE Serial Monitor (se usar ESP32 físico)
