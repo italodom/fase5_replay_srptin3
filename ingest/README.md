@@ -10,11 +10,9 @@ Este diretório contém os arquivos relacionados à **coleta e ingestão de dado
 ingest/
 ├── sketch.ino              # Código ESP32 + DHT22 (Arduino)
 ├── wokwi_link.txt          # Link do projeto Wokwi (simulação)
-├── visualize_readings.py   # Script de visualização de leituras
 ├── prints/                 # Evidências e screenshots
 │   ├── circuit.png         # Imagem do circuito Wokwi
-│   ├── monitor_serial.png  # Print do monitor serial (a criar)
-│   └── readings_chart.png  # Gráfico de leituras (gerado)
+│   └── monitor_serial.png  # Print do monitor serial (a criar)
 └── README.md               # Este arquivo
 ```
 
@@ -36,22 +34,6 @@ Código Arduino para ESP32 com sensor DHT22.
 23.15,46.20
 21.80,48.90
 ```
-
-### **visualize_readings.py**
-Script Python para visualizar as últimas leituras do banco de dados.
-
-**Uso:**
-```bash
-cd ingest/
-python visualize_readings.py
-```
-
-**Funcionalidades:**
-- Lê últimas 100 leituras do `data/sensor_data.csv`
-- Gera gráfico com temperatura e umidade
-- Mostra linhas de threshold (Normal/Alerta/Crítico)
-- Exporta PNG em alta resolução (300 dpi)
-- Imprime estatísticas (média, min, max, desvio)
 
 ## 🌐 Simulação Wokwi
 
@@ -122,8 +104,8 @@ Para evoluir de simulação para produção:
 ### **Circuito Wokwi**
 ![Circuito](prints/circuit.png)
 
-### **Gráfico de Leituras**
-Execute `python visualize_readings.py` para gerar `prints/readings_chart.png`
+### **Monitor Serial**
+Print do monitor serial deve ser adicionado em `prints/monitor_serial.png`
 
 ## 📝 Observações
 

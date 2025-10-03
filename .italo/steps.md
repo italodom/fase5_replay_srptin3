@@ -79,14 +79,9 @@ delay(30000); // 30 segundos
 - [ ] ~~Exportar `diagram.json` do Wokwi~~ (não necessário - link já salvo)
 - [ ] Tirar print do Monitor Serial e salvar como `/ingest/prints/monitor_serial.png` (manual)
 
-### 6. Criar Script Python de Visualização
-- [x] Criar `/ingest/visualize_readings.py`:
-  - Adaptado do `main.py` do Sprint 2
-  - Ler últimas 100 leituras do CSV
-  - Gráfico de linha temporal (temperatura e umidade)
-  - Linhas de threshold (Normal/Alerta/Crítico)
-  - Estatísticas (média, min, max, desvio)
-  - Exportar como `/ingest/prints/readings_chart.png`
+### 6. ~~Criar Script Python de Visualização~~
+- [x] ~~Criar `/ingest/visualize_readings.py`~~ (REMOVIDO - não obrigatório)
+  - Gráfico será gerado pelo Dashboard Streamlit (Fase 3)
 
 ### 7. Documentação de Ingestão
 - [x] Criar `/ingest/README.md`:
