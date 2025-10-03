@@ -98,56 +98,55 @@ delay(30000); // 30 segundos
 ### 8. Criar Dashboard Streamlit
 
 #### 8.1 Estrutura do Dashboard
-- [ ] Criar `/dashboard/app.py`
-- [ ] Criar `/dashboard/requirements.txt`:
-```txt
-streamlit>=1.28.0
-plotly>=5.14.0
-oracledb>=1.4.0
-pandas>=1.5.0
-```
-- [ ] Copiar logo: `/assets/logo-fiap.png` do Sprint 2 para `/dashboard/assets/logo-fiap.png`
+- [x] Criar `/dashboard/app.py`
+- [x] Criar `/dashboard/config.py` (thresholds e configurações)
+- [x] Criar `/dashboard/db_connection.py` (conexão Oracle + modo simulação)
+- [x] Criar `/dashboard/requirements.txt`
+- [x] Copiar logo: `/assets/logo-fiap.png` do Sprint 2 para `/dashboard/assets/logo-fiap.png` (já feito na Fase 2)
 
 #### 8.2 Seções do Dashboard
-- [ ] **Header**: Título e logo FarmTech Solutions
-- [ ] **KPIs** (cards superiores):
+- [x] **Header**: Título e logo FarmTech Solutions
+- [x] **KPIs** (cards superiores):
   - Total de leituras
   - % Leituras Normais
   - % Leituras em Alerta
   - % Leituras Críticas
   - Número de alertas ativos
-- [ ] **Gráficos**:
-  - Série temporal (temperatura e umidade últimas 24h)
+- [x] **Gráficos**:
+  - Série temporal (temperatura e umidade) com linhas de threshold
   - Distribuição por equipamento (barras)
   - Heatmap de alertas por hora do dia
-  - Performance do modelo ML (métricas do `/notebooks/`)
-- [ ] **Sistema de Alertas**:
+  - Performance do modelo ML (gráfico pizza + métricas)
+- [x] **Sistema de Alertas**:
   - Tabela de alertas ativos
   - Banner vermelho quando crítico
-  - Filtros por equipamento/sensor
-  - Histórico de alertas resolvidos
+  - Filtros por severidade
+  - Sidebar com status de conexão
 
 #### 8.3 Configuração de Thresholds
-- [ ] Criar `/dashboard/config.py`:
-```python
-THRESHOLDS = {
-    'temperatura': {'min': 18, 'max': 28, 'critico': 32},
-    'umidade': {'min': 50, 'max': 80, 'critico': 40}
-}
-```
+- [x] Criar `/dashboard/config.py`:
+  - Thresholds (temperatura e umidade)
+  - Queries SQL pré-definidas
+  - Mensagens de alerta
+  - Cores e configurações visuais
 
 #### 8.4 Conexão com Banco
-- [ ] Criar `/dashboard/db_connection.py`:
-  - Função `get_latest_readings()`
-  - Função `get_alerts()`
+- [x] Criar `/dashboard/db_connection.py`:
+  - Função `get_total_leituras()`
+  - Função `get_leituras_por_qualidade()`
+  - Função `get_leituras_recentes()`
+  - Função `get_alertas_ativos()`
+  - Função `get_metricas_ml()`
   - Função `get_kpis()`
-  - Função `get_ml_metrics()` (ler de `/notebooks/model_metrics.json`)
+  - **Modo simulação** com dados mockados (não precisa de Oracle)
 
 ### 9. Criar README do Dashboard
-- [ ] Criar `/dashboard/README.md`:
+- [x] Criar `/dashboard/README.md`:
   - Como rodar: `streamlit run app.py`
   - Configuração de variáveis de ambiente (Oracle DB)
-  - Screenshots
+  - Modo simulação vs produção
+  - Troubleshooting
+  - Descrição de componentes
 
 ---
 
