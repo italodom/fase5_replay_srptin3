@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Script para criar e popular o banco SQLite com a mesma estrutura e dados do Oracle
+Script para criar banco SQLite limpo - apenas estrutura base sem leituras históricas
 """
 
 import sqlite3
@@ -10,7 +10,6 @@ from pathlib import Path
 # Caminhos
 DB_PATH = Path(__file__).parent.parent / 'data' / 'farmtech.db'
 SQL_SCHEMA = Path(__file__).parent.parent / 'db' / 'banco.sql'
-SQL_INSERTS = Path(__file__).parent.parent / 'db' / 'insert_leituras.sql'
 
 def convert_oracle_to_sqlite(sql_content):
     """Converte SQL do Oracle para SQLite"""
@@ -58,25 +57,10 @@ def convert_oracle_to_sqlite(sql_content):
 
     return sql_content
 
-def convert_insert_to_sqlite(insert_line):
-    """Converte um INSERT do Oracle para SQLite"""
-
-    # Substituir TO_TIMESTAMP por datetime
-    insert_line = re.sub(
-        r"TO_TIMESTAMP\('([^']+)',\s*'[^']+'\)",
-        r"'\1'",
-        insert_line
-    )
-
-    # Corrigir qualidade "Critico" para "Crítico"
-    insert_line = re.sub(r"',\s*'Critico'\)", "', 'Crítico')", insert_line)
-
-    return insert_line
-
 def create_database():
-    """Cria o banco SQLite com a estrutura do Oracle"""
+    """Cria o banco SQLite com apenas estrutura base"""
 
-    print("🗄️  Criando banco de dados SQLite...")
+    print("🗄️  Criando banco de dados limpo...")
 
     # Remover banco existente
     if DB_PATH.exists():
@@ -130,13 +114,13 @@ def create_database():
             try:
                 cursor.execute(statement)
             except sqlite3.Error as e:
-                pass  # Ignorar erros de índice (tabela pode não existir ainda)
+                pass  # Ignorar erros de índice
 
     conn.commit()
     print("✅ Estrutura criada com sucesso!")
 
     # Inserir dados iniciais manualmente
-    print("🌱 Inserindo dados iniciais...")
+    print("🌱 Inserindo dados base...")
 
     # Tipos de Sensor
     cursor.executemany("""
@@ -193,94 +177,7 @@ def create_database():
     ])
 
     conn.commit()
-    print("✅ Dados iniciais inseridos!")
-
-    # Inserir dados de leituras
-    print("📊 Inserindo leituras históricas...")
-
-    with open(SQL_INSERTS, 'r', encoding='utf-8') as f:
-        insert_count = 0
-        for line in f:
-            line = line.strip()
-            if line.startswith('INSERT INTO'):
-                sqlite_insert = convert_insert_to_sqlite(line)
-                try:
-                    cursor.execute(sqlite_insert)
-                    insert_count += 1
-                    if insert_count % 100 == 0:
-                        print(f"   {insert_count} leituras inseridas...")
-                except sqlite3.Error as e:
-                    print(f"   ⚠️  Erro no insert: {e}")
-                    print(f"   SQL: {sqlite_insert[:100]}...")
-
-    conn.commit()
-    print(f"✅ {insert_count} leituras inseridas!")
-
-    # Criar alertas baseados nas leituras
-    print("🚨 Criando alertas...")
-
-    cursor.execute("""
-        INSERT INTO Alerta (id_leitura, tipo_alerta, mensagem, data_alerta, resolvido)
-        SELECT
-            l.id_leitura,
-            CASE
-                WHEN ts.nome = 'Temperatura' AND l.qualidade = 'Alerta' THEN 'Alerta Temperatura'
-                WHEN ts.nome = 'Temperatura' AND l.qualidade = 'Critico' THEN 'Crítico Temperatura'
-                WHEN ts.nome = 'Umidade' AND l.qualidade = 'Alerta' THEN 'Alerta Umidade'
-                WHEN ts.nome = 'Umidade' AND l.qualidade = 'Critico' THEN 'Crítico Umidade'
-                ELSE 'Alerta Sensor'
-            END,
-            CASE
-                WHEN ts.nome = 'Temperatura' AND l.qualidade = 'Alerta' THEN 'Temperatura em nível de alerta'
-                WHEN ts.nome = 'Temperatura' AND l.qualidade = 'Critico' THEN 'Temperatura em nível crítico'
-                WHEN ts.nome = 'Umidade' AND l.qualidade = 'Alerta' THEN 'Umidade em nível de alerta'
-                WHEN ts.nome = 'Umidade' AND l.qualidade = 'Critico' THEN 'Umidade em nível crítico'
-                ELSE 'Alerta detectado'
-            END,
-            l.data_hora,
-            'N'
-        FROM Leitura l
-        JOIN Sensor s ON l.id_sensor = s.id_sensor
-        JOIN Tipo_Sensor ts ON s.id_tipo_sensor = ts.id_tipo_sensor
-        WHERE l.qualidade IN ('Alerta', 'Critico')
-    """)
-
-    alert_count = cursor.rowcount
-    conn.commit()
-    print(f"✅ {alert_count} alertas criados!")
-
-    # Estatísticas
-    print("\n📈 Estatísticas do banco:")
-
-    cursor.execute("SELECT COUNT(*) FROM Tipo_Sensor")
-    print(f"   Tipos de Sensor: {cursor.fetchone()[0]}")
-
-    cursor.execute("SELECT COUNT(*) FROM Cultura")
-    print(f"   Culturas: {cursor.fetchone()[0]}")
-
-    cursor.execute("SELECT COUNT(*) FROM Equipamento")
-    print(f"   Equipamentos: {cursor.fetchone()[0]}")
-
-    cursor.execute("SELECT COUNT(*) FROM Sensor")
-    print(f"   Sensores: {cursor.fetchone()[0]}")
-
-    cursor.execute("SELECT COUNT(*) FROM Leitura")
-    print(f"   Leituras: {cursor.fetchone()[0]}")
-
-    cursor.execute("SELECT COUNT(*) FROM Alerta")
-    print(f"   Alertas: {cursor.fetchone()[0]}")
-
-    cursor.execute("""
-        SELECT qualidade, COUNT(*)
-        FROM Leitura
-        GROUP BY qualidade
-    """)
-    print("\n   Leituras por qualidade:")
-    for row in cursor.fetchall():
-        print(f"     {row[0]}: {row[1]}")
-
-    # Criar VIEWs para compatibilidade com queries do dashboard
-    print("\n🔍 Criando VIEWs...")
+    print("✅ Dados base inseridos!")
 
     # Renomear tabelas originais
     cursor.execute("ALTER TABLE Leitura RENAME TO Leitura_Base")
@@ -321,10 +218,32 @@ def create_database():
     """)
 
     conn.commit()
-    print("✅ VIEWs criadas com sucesso!")
+    print("✅ VIEWs criadas!")
+
+    # Estatísticas
+    print("\n📈 Banco limpo criado:")
+
+    cursor.execute("SELECT COUNT(*) FROM Tipo_Sensor")
+    print(f"   Tipos de Sensor: {cursor.fetchone()[0]}")
+
+    cursor.execute("SELECT COUNT(*) FROM Cultura")
+    print(f"   Culturas: {cursor.fetchone()[0]}")
+
+    cursor.execute("SELECT COUNT(*) FROM Equipamento")
+    print(f"   Equipamentos: {cursor.fetchone()[0]}")
+
+    cursor.execute("SELECT COUNT(*) FROM Sensor")
+    print(f"   Sensores: {cursor.fetchone()[0]}")
+
+    cursor.execute("SELECT COUNT(*) FROM Leitura")
+    print(f"   Leituras: {cursor.fetchone()[0]} (vazio)")
+
+    cursor.execute("SELECT COUNT(*) FROM Alerta")
+    print(f"   Alertas: {cursor.fetchone()[0]} (vazio)")
 
     conn.close()
-    print(f"\n✅ Banco SQLite criado com sucesso: {DB_PATH}")
+    print(f"\n✅ Banco limpo criado: {DB_PATH}")
+    print("🎯 Pronto para simulação em tempo real!")
 
 if __name__ == '__main__':
     create_database()

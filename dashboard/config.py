@@ -106,6 +106,7 @@ QUERIES = {
         JOIN Leitura l ON a.id_leitura = l.id_leitura
         WHERE a.resolvido = 'N'
         ORDER BY a.data_hora_alerta DESC
+        LIMIT 10
     """,
 
     'metricas_ml': """

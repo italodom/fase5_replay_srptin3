@@ -12,6 +12,7 @@ from streamlit_autorefresh import st_autorefresh
 import os
 import random
 import time
+import math
 
 # Importar módulos locais
 from config import (
@@ -158,50 +159,149 @@ def get_db_connection():
     db.connect()
     return db
 
-def generate_simulated_reading():
-    """Gera leitura simulada de temperatura e umidade com distribuição realista"""
-    # Distribuição: 70% Normal, 20% Alerta, 10% Crítico
-    rand = random.random()
+def get_quality(value, sensor_type):
+    """Determina qualidade da leitura"""
+    thresholds = THRESHOLDS[sensor_type]
+    if value < thresholds['critico_baixo'] or value > thresholds['critico_alto']:
+        return 'Critico'
+    elif value < thresholds['min_ideal'] or value > thresholds['max_ideal']:
+        return 'Alerta'
+    else:
+        return 'Normal'
 
-    def get_quality(value, sensor_type):
-        thresholds = THRESHOLDS[sensor_type]
-        if value < thresholds['critico_baixo'] or value > thresholds['critico_alto']:
-            return 'Critico'
-        elif value < thresholds['min_ideal'] or value > thresholds['max_ideal']:
-            return 'Alerta'
-        else:
-            return 'Normal'
+def init_estufa_state():
+    """Inicializa estado de cada estufa se não existir"""
+    if 'estufa_state' not in st.session_state:
+        st.session_state.estufa_state = {
+            'Estufa 1': {
+                'temp': 22.0,
+                'humid': 65.0,
+                'evento': None,
+                'evento_duracao': 0,
+                'caracteristica': 'quente',  # Orientação norte, mais sol
+                'offset_temp': 2.0,
+                'offset_humid': -5.0
+            },
+            'Estufa 2': {
+                'temp': 21.0,
+                'humid': 68.0,
+                'evento': None,
+                'evento_duracao': 0,
+                'caracteristica': 'estavel',  # Climatização controlada
+                'offset_temp': 0.0,
+                'offset_humid': 0.0
+            },
+            'Estufa 3': {
+                'temp': 20.0,
+                'humid': 72.0,
+                'evento': None,
+                'evento_duracao': 0,
+                'caracteristica': 'umida',  # Sistema de irrigação
+                'offset_temp': -1.0,
+                'offset_humid': 8.0
+            },
+            'Estufa 4': {
+                'temp': 23.0,
+                'humid': 62.0,
+                'evento': None,
+                'evento_duracao': 0,
+                'caracteristica': 'variavel',  # Ventilação natural
+                'offset_temp': 1.0,
+                'offset_humid': -3.0
+            }
+        }
 
+def generate_simulated_reading(estufa_nome):
+    """Gera leitura simulada realista com continuidade temporal"""
+    init_estufa_state()
+
+    state = st.session_state.estufa_state[estufa_nome]
     now = datetime.now()
+    hour = now.hour
+    minute = now.minute
 
-    if rand < 0.7:  # 70% Normal
-        temp = random.uniform(18, 28)  # Faixa ideal
-        humid = random.uniform(50, 80)  # Faixa ideal
-    elif rand < 0.9:  # 20% Alerta
-        if random.random() < 0.5:
-            temp = random.choice([random.uniform(15, 18), random.uniform(28, 32)])  # Alerta
-            humid = random.uniform(50, 80)  # Normal
-        else:
-            temp = random.uniform(18, 28)  # Normal
-            humid = random.choice([random.uniform(40, 50), random.uniform(80, 90)])  # Alerta
-    else:  # 10% Crítico
-        if random.random() < 0.5:
-            temp = random.choice([random.uniform(13, 15), random.uniform(32, 35)])  # Crítico
-            humid = random.uniform(50, 80)  # Normal
-        else:
-            temp = random.uniform(18, 28)  # Normal
-            humid = random.choice([random.uniform(35, 40), random.uniform(90, 95)])  # Crítico
+    # Temperatura alvo baseada na hora (ciclo diário suave)
+    # Usa seno para transição suave
+    hour_decimal = hour + minute / 60.0
+    # Pico às 14h (hour 14), mínimo às 5h (hour 5)
+    temp_cycle = 23 + 5 * math.sin((hour_decimal - 5) / 24 * 2 * math.pi - math.pi/2)
 
-    temp_quality = get_quality(temp, 'temperatura')
-    humid_quality = get_quality(humid, 'umidade')
+    # Aplicar características da estufa
+    temp_target = temp_cycle + state['offset_temp']
+    humid_target = 70 - (temp_target - 23) * 1.5 + state['offset_humid']
+
+    # Processar eventos em andamento
+    if state['evento']:
+        state['evento_duracao'] -= 1
+
+        if state['evento'] == 'porta_aberta':
+            # Porta aberta: temperatura cai, umidade varia
+            temp_target -= 3
+            humid_target += 10
+        elif state['evento'] == 'falha_climatizacao':
+            # Falha AC: temperatura sobe
+            temp_target += 8
+            humid_target -= 5
+        elif state['evento'] == 'irrigacao':
+            # Irrigação: umidade sobe
+            humid_target += 15
+            temp_target -= 1
+        elif state['evento'] == 'ventilacao':
+            # Ventilação: umidade cai
+            humid_target -= 12
+            temp_target -= 2
+
+        # Finalizar evento
+        if state['evento_duracao'] <= 0:
+            state['evento'] = None
+
+    # Chance de novo evento (2% por leitura)
+    if not state['evento'] and random.random() < 0.02:
+        eventos = ['porta_aberta', 'falha_climatizacao', 'irrigacao', 'ventilacao']
+        state['evento'] = random.choice(eventos)
+        state['evento_duracao'] = random.randint(3, 8)  # Dura 3-8 leituras (15-40s)
+
+    # Variação gradual com inércia térmica
+    # Mudança máxima de ±0.8°C e ±3% por leitura
+    max_temp_change = 0.8 if not state['evento'] else 1.5
+    max_humid_change = 3.0 if not state['evento'] else 5.0
+
+    # Tendência em direção ao alvo + pequeno ruído
+    temp_diff = temp_target - state['temp']
+    humid_diff = humid_target - state['humid']
+
+    # Aplicar inércia (só move 20% em direção ao alvo + ruído)
+    temp_change = temp_diff * 0.2 + random.uniform(-0.3, 0.3)
+    humid_change = humid_diff * 0.2 + random.uniform(-1.5, 1.5)
+
+    # Limitar mudança máxima
+    temp_change = max(-max_temp_change, min(max_temp_change, temp_change))
+    humid_change = max(-max_humid_change, min(max_humid_change, humid_change))
+
+    # Aplicar mudança
+    new_temp = state['temp'] + temp_change
+    new_humid = state['humid'] + humid_change
+
+    # Garantir limites físicos
+    new_temp = max(10, min(40, new_temp))
+    new_humid = max(25, min(100, new_humid))
+
+    # Atualizar estado
+    state['temp'] = new_temp
+    state['humid'] = new_humid
+
+    temp_quality = get_quality(new_temp, 'temperatura')
+    humid_quality = get_quality(new_humid, 'umidade')
 
     return {
-        'temperatura': {'valor': round(temp, 1), 'qualidade': temp_quality, 'timestamp': now},
-        'umidade': {'valor': round(humid, 1), 'qualidade': humid_quality, 'timestamp': now}
+        'temperatura': {'valor': round(new_temp, 1), 'qualidade': temp_quality, 'timestamp': now},
+        'umidade': {'valor': round(new_humid, 1), 'qualidade': humid_quality, 'timestamp': now},
+        'estufa': estufa_nome,
+        'evento': state['evento']
     }
 
 def insert_simulated_reading(db):
-    """Insere leitura simulada no banco SQLite baseado em sensores reais"""
+    """Insere leitura simulada realista no banco SQLite"""
     if db.db_type != 'sqlite':
         return None
 
@@ -210,45 +310,57 @@ def insert_simulated_reading(db):
         conn = db.connection
         cursor = conn.cursor()
 
-        # Buscar equipamentos disponíveis
-        cursor.execute("SELECT DISTINCT equipamento FROM Leitura LIMIT 1")
-        equipamento_row = cursor.fetchone()
-        equipamento = equipamento_row[0] if equipamento_row else '1'
+        # Pares de sensores (temperatura, umidade) por estufa
+        sensor_map = {
+            'Estufa 1': (1, 2),
+            'Estufa 2': (4, 5),
+            'Estufa 3': (6, 7),
+            'Estufa 4': (9, 10),
+        }
 
-        reading = generate_simulated_reading()
+        # Randomizar estufa para esta leitura
+        estufa_nome = random.choice(list(sensor_map.keys()))
+        temp_sensor, humid_sensor = sensor_map[estufa_nome]
+
+        # Gerar leitura realista com continuidade
+        reading = generate_simulated_reading(estufa_nome)
 
         # Inserir temperatura
         cursor.execute("""
-            INSERT INTO Leitura (id_sensor, tipo_sensor, equipamento, valor, data_hora, qualidade)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (1, 'Temperatura', equipamento, reading['temperatura']['valor'],
+            INSERT INTO Leitura_Base (id_sensor, valor, data_hora, qualidade)
+            VALUES (?, ?, ?, ?)
+        """, (temp_sensor, reading['temperatura']['valor'],
               reading['temperatura']['timestamp'].isoformat(), reading['temperatura']['qualidade']))
 
         temp_id = cursor.lastrowid
 
         # Inserir umidade
         cursor.execute("""
-            INSERT INTO Leitura (id_sensor, tipo_sensor, equipamento, valor, data_hora, qualidade)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (2, 'Umidade', equipamento, reading['umidade']['valor'],
+            INSERT INTO Leitura_Base (id_sensor, valor, data_hora, qualidade)
+            VALUES (?, ?, ?, ?)
+        """, (humid_sensor, reading['umidade']['valor'],
               reading['umidade']['timestamp'].isoformat(), reading['umidade']['qualidade']))
 
         humid_id = cursor.lastrowid
 
-        # Criar alertas SEPARADOS para cada sensor (nunca juntos)
+        # Criar alertas com informação do evento se houver
+        evento_info = f" ({reading['evento'].replace('_', ' ').title()})" if reading['evento'] else ""
+
         if reading['temperatura']['qualidade'] in ['Alerta', 'Critico']:
-            descricao = f"Temperatura em nível de {reading['temperatura']['qualidade'].lower()}: {reading['temperatura']['valor']}°C"
+            tipo_alerta = f"{'Crítico' if reading['temperatura']['qualidade'] == 'Critico' else 'Alerta'} Temperatura"
+            mensagem = f"{estufa_nome}: Temperatura em nível de {reading['temperatura']['qualidade'].lower()}{evento_info}"
             cursor.execute("""
-                INSERT INTO Alerta (id_leitura, descricao, nivel_severidade, data_hora_alerta, resolvido)
+                INSERT INTO Alerta_Base (id_leitura, tipo_alerta, mensagem, data_alerta, resolvido)
                 VALUES (?, ?, ?, ?, 'N')
-            """, (temp_id, descricao, reading['temperatura']['qualidade'], reading['temperatura']['timestamp'].isoformat()))
+            """, (temp_id, tipo_alerta, mensagem, reading['temperatura']['timestamp'].isoformat()))
 
         if reading['umidade']['qualidade'] in ['Alerta', 'Critico']:
-            descricao = f"Umidade em nível de {reading['umidade']['qualidade'].lower()}: {reading['umidade']['valor']}%"
+            tipo_alerta = f"{'Crítico' if reading['umidade']['qualidade'] == 'Critico' else 'Alerta'} Umidade"
+            mensagem = f"{estufa_nome}: Umidade em nível de {reading['umidade']['qualidade'].lower()}{evento_info}"
             cursor.execute("""
-                INSERT INTO Alerta (id_leitura, descricao, nivel_severidade, data_hora_alerta, resolvido)
+                INSERT INTO Alerta_Base (id_leitura, tipo_alerta, mensagem, data_alerta, resolvido)
                 VALUES (?, ?, ?, ?, 'N')
-            """, (humid_id, descricao, reading['umidade']['qualidade'], reading['umidade']['timestamp'].isoformat()))
+            """, (humid_id, tipo_alerta, mensagem, reading['umidade']['timestamp'].isoformat()))
 
         conn.commit()
         return reading
@@ -265,58 +377,139 @@ def display_kpi_card(title, value, delta=None, color="primary"):
         delta=delta
     )
 
-def create_time_series_chart(df):
-    """Cria gráfico de série temporal"""
+def create_time_series_chart(df, selected_equipamentos=None):
+    """Cria gráfico de série temporal separado por equipamento"""
     if df.empty:
         st.warning("Sem dados para exibir")
         return
 
-    # Filtrar temperatura e umidade
-    df_temp = df[df['TIPO_SENSOR'] == 'Temperatura'].copy()
-    df_umid = df[df['TIPO_SENSOR'] == 'Umidade'].copy()
+    # Filtrar por equipamentos selecionados
+    if selected_equipamentos:
+        df = df[df['EQUIPAMENTO'].isin(selected_equipamentos)].copy()
+
+    if df.empty:
+        st.warning("Sem dados para os equipamentos selecionados")
+        return
+
+    # Importar cores de equipamentos
+    from config import EQUIPMENT_COLORS
 
     fig = go.Figure()
 
-    # Linha de temperatura
-    if not df_temp.empty:
-        fig.add_trace(go.Scatter(
-            x=df_temp['DATA_HORA'],
-            y=df_temp['VALOR'],
-            name='Temperatura (°C)',
-            mode='lines+markers',
-            line=dict(color='#FF5733', width=2),
-            marker=dict(size=4)
-        ))
+    # Obter lista de equipamentos únicos
+    equipamentos = sorted(df['EQUIPAMENTO'].unique())
 
-        # Linhas de threshold temperatura
+    # Adicionar linhas de temperatura por equipamento
+    df_temp = df[df['TIPO_SENSOR'] == 'Temperatura'].copy()
+    for equipamento in equipamentos:
+        df_eq = df_temp[df_temp['EQUIPAMENTO'] == equipamento]
+        if not df_eq.empty:
+            # Cor do equipamento (com fallback)
+            color = EQUIPMENT_COLORS.get(equipamento, '#999999')
+
+            # Criar texto customizado para hover
+            hover_text = [
+                f"<b>{equipamento}</b><br>" +
+                f"Temperatura: {valor:.1f}°C<br>" +
+                f"Qualidade: {qual}<br>" +
+                f"Data: {data.strftime('%d/%m/%Y %H:%M:%S')}"
+                for valor, qual, data in zip(
+                    df_eq['VALOR'],
+                    df_eq['QUALIDADE'],
+                    pd.to_datetime(df_eq['DATA_HORA'])
+                )
+            ]
+
+            fig.add_trace(go.Scatter(
+                x=df_eq['DATA_HORA'],
+                y=df_eq['VALOR'],
+                name=f'{equipamento} - Temp',
+                mode='lines+markers',
+                line=dict(color=color, width=2),
+                marker=dict(size=5, symbol='circle'),
+                hovertext=hover_text,
+                hoverinfo='text'
+            ))
+
+    # Linhas de threshold temperatura
+    if not df_temp.empty:
         fig.add_hline(
             y=THRESHOLDS['temperatura']['max_ideal'],
             line_dash="dash",
-            line_color="green",
-            annotation_text="Temp Ideal Max"
+            line_color="rgba(40, 167, 69, 0.5)",
+            annotation_text="Temp Ideal Max",
+            annotation_position="right"
+        )
+        fig.add_hline(
+            y=THRESHOLDS['temperatura']['min_ideal'],
+            line_dash="dash",
+            line_color="rgba(40, 167, 69, 0.5)",
+            annotation_text="Temp Ideal Min",
+            annotation_position="right"
         )
         fig.add_hline(
             y=THRESHOLDS['temperatura']['critico_alto'],
-            line_dash="dash",
-            line_color="red",
-            annotation_text="Temp Crítico"
+            line_dash="dot",
+            line_color="rgba(220, 53, 69, 0.5)",
+            annotation_text="Temp Crítico Alto",
+            annotation_position="right"
         )
 
-    # Linha de umidade (eixo Y secundário)
+    # Adicionar linhas de umidade por equipamento (eixo Y secundário)
+    df_umid = df[df['TIPO_SENSOR'] == 'Umidade'].copy()
+    for equipamento in equipamentos:
+        df_eq = df_umid[df_umid['EQUIPAMENTO'] == equipamento]
+        if not df_eq.empty:
+            # Cor do equipamento (um pouco mais escura para diferenciar)
+            base_color = EQUIPMENT_COLORS.get(equipamento, '#999999')
+
+            # Criar texto customizado para hover
+            hover_text = [
+                f"<b>{equipamento}</b><br>" +
+                f"Umidade: {valor:.1f}%<br>" +
+                f"Qualidade: {qual}<br>" +
+                f"Data: {data.strftime('%d/%m/%Y %H:%M:%S')}"
+                for valor, qual, data in zip(
+                    df_eq['VALOR'],
+                    df_eq['QUALIDADE'],
+                    pd.to_datetime(df_eq['DATA_HORA'])
+                )
+            ]
+
+            fig.add_trace(go.Scatter(
+                x=df_eq['DATA_HORA'],
+                y=df_eq['VALOR'],
+                name=f'{equipamento} - Umid',
+                mode='lines+markers',
+                line=dict(color=base_color, width=2, dash='dot'),
+                marker=dict(size=5, symbol='square'),
+                yaxis='y2',
+                hovertext=hover_text,
+                hoverinfo='text'
+            ))
+
+    # Linhas de threshold umidade
     if not df_umid.empty:
-        fig.add_trace(go.Scatter(
-            x=df_umid['DATA_HORA'],
-            y=df_umid['VALOR'],
-            name='Umidade (%)',
-            mode='lines+markers',
-            line=dict(color='#3399FF', width=2),
-            marker=dict(size=4),
-            yaxis='y2'
-        ))
+        fig.add_hline(
+            y=THRESHOLDS['umidade']['max_ideal'],
+            line_dash="dash",
+            line_color="rgba(40, 167, 69, 0.3)",
+            annotation_text="Umid Ideal Max",
+            annotation_position="left",
+            yref='y2'
+        )
+        fig.add_hline(
+            y=THRESHOLDS['umidade']['min_ideal'],
+            line_dash="dash",
+            line_color="rgba(40, 167, 69, 0.3)",
+            annotation_text="Umid Ideal Min",
+            annotation_position="left",
+            yref='y2'
+        )
 
     # Layout
     fig.update_layout(
-        title='Evolução Temporal - Temperatura e Umidade',
+        title='Evolução Temporal - Temperatura e Umidade por Equipamento',
         xaxis_title='Data/Hora',
         yaxis_title='Temperatura (°C)',
         yaxis2=dict(
@@ -326,7 +519,14 @@ def create_time_series_chart(df):
         ),
         height=CHART_CONFIG['height'],
         template=CHART_CONFIG['template'],
-        hovermode='x unified'
+        hovermode='closest',
+        legend=dict(
+            orientation="v",
+            yanchor="top",
+            y=1,
+            xanchor="left",
+            x=1.15
+        )
     )
 
     st.plotly_chart(fig, use_container_width=True)
@@ -457,8 +657,36 @@ def main():
         # Modo de operação
         if db.use_mock:
             st.warning("⚠️ Modo Simulação  \n(Sem conexão Oracle)")
+        elif db.db_type == 'sqlite':
+            st.info("💾 SQLite Local")
         else:
             st.success("✅ Conectado ao Oracle")
+
+        # Status das estufas
+        st.markdown("---")
+        st.markdown("### 🏭 Status das Estufas")
+
+        init_estufa_state()
+        for estufa_nome, state in st.session_state.estufa_state.items():
+            with st.expander(f"{estufa_nome}", expanded=False):
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric("🌡️ Temp", f"{state['temp']:.1f}°C")
+                with col2:
+                    st.metric("💧 Umid", f"{state['humid']:.1f}%")
+
+                if state['evento']:
+                    evento_icons = {
+                        'porta_aberta': '🚪',
+                        'falha_climatizacao': '🔥',
+                        'irrigacao': '💦',
+                        'ventilacao': '💨'
+                    }
+                    icon = evento_icons.get(state['evento'], '⚠️')
+                    evento_nome = state['evento'].replace('_', ' ').title()
+                    st.warning(f"{icon} **{evento_nome}**  \n(~{state['evento_duracao'] * 5}s restantes)")
+                else:
+                    st.success("✅ Normal")
 
     # ========================================
     # SEÇÃO 1: KPIs
@@ -527,7 +755,28 @@ def main():
     tab1, tab2, tab3 = st.tabs(["📈 Série Temporal", "📊 Distribuição", "🔥 Heatmap"])
 
     with tab1:
-        create_time_series_chart(leituras_df)
+        # Filtro de equipamentos
+        if not leituras_df.empty:
+            equipamentos_disponiveis = sorted(leituras_df['EQUIPAMENTO'].dropna().unique())
+            if equipamentos_disponiveis:
+                col_filter1, col_filter2 = st.columns([3, 1])
+                with col_filter1:
+                    equipamentos_selecionados = st.multiselect(
+                        "🔍 Filtrar por equipamento:",
+                        options=equipamentos_disponiveis,
+                        default=equipamentos_disponiveis,
+                        help="Selecione quais estufas você deseja visualizar no gráfico"
+                    )
+                with col_filter2:
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    if st.button("↻ Resetar", key="reset_filter"):
+                        st.rerun()
+
+                create_time_series_chart(leituras_df, equipamentos_selecionados)
+            else:
+                create_time_series_chart(leituras_df)
+        else:
+            create_time_series_chart(leituras_df)
 
     with tab2:
         create_distribution_chart(leituras_df)
