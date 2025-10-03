@@ -1,38 +1,107 @@
 """
-Módulo de conexão com Oracle Database
+Módulo de conexão com Banco de Dados
 FarmTech Solutions - Dashboard
+
+Suporta 3 modos:
+1. Oracle (produção)
+2. SQLite (teste local)
+3. Mock (simulação sem banco)
 """
 
 import os
+import sqlite3
 import pandas as pd
+
+# Tentar importar oracledb
 try:
     import oracledb
     ORACLE_AVAILABLE = True
 except ImportError:
     ORACLE_AVAILABLE = False
-    print("⚠️ Aviso: Biblioteca oracledb não instalada. Usando modo simulação.")
 
 from config import DB_CONFIG, QUERIES
 
 
 class DatabaseConnection:
-    """Gerencia conexão com Oracle Database"""
+    """Gerencia conexão com banco de dados (Oracle ou SQLite)"""
 
-    def __init__(self):
-        """Inicializa conexão"""
+    def __init__(self, db_type='auto'):
+        """
+        Inicializa conexão
+
+        Args:
+            db_type: 'oracle', 'sqlite', 'mock' ou 'auto' (detecta automaticamente)
+        """
         self.connection = None
-        self.use_mock = not ORACLE_AVAILABLE
+        self.db_type = db_type
+        self.use_mock = False
 
-        # Carregar credenciais de variáveis de ambiente
+        # SQLite database path
+        self.sqlite_path = os.path.join(
+            os.path.dirname(__file__),
+            '..',
+            'data',
+            'farmtech.db'
+        )
+
+        # Carregar credenciais Oracle de variáveis de ambiente
         self.user = os.getenv('ORACLE_USER', DB_CONFIG.get('user'))
         self.password = os.getenv('ORACLE_PASSWORD', DB_CONFIG.get('password'))
         self.dsn = os.getenv('ORACLE_DSN', DB_CONFIG.get('dsn'))
 
+        # Auto-detectar tipo de banco
+        if self.db_type == 'auto':
+            self._auto_detect_db_type()
+
+    def _auto_detect_db_type(self):
+        """Detecta automaticamente qual tipo de banco usar"""
+        # Prioridade 1: Oracle se credenciais disponíveis
+        if ORACLE_AVAILABLE and all([self.user, self.password, self.dsn]):
+            self.db_type = 'oracle'
+        # Prioridade 2: SQLite se arquivo existe
+        elif os.path.exists(self.sqlite_path):
+            self.db_type = 'sqlite'
+        # Prioridade 3: Mock
+        else:
+            self.db_type = 'mock'
+            self.use_mock = True
+
     def connect(self):
         """Estabelece conexão com o banco"""
-        if self.use_mock:
-            print("📊 Modo SIMULAÇÃO ativado (sem banco Oracle)")
+        if self.db_type == 'mock' or self.use_mock:
+            print("📊 Modo SIMULAÇÃO ativado (dados mockados)")
             return True
+
+        elif self.db_type == 'sqlite':
+            return self._connect_sqlite()
+
+        elif self.db_type == 'oracle':
+            return self._connect_oracle()
+
+        else:
+            print(f"❌ Tipo de banco inválido: {self.db_type}")
+            self.use_mock = True
+            return False
+
+    def _connect_sqlite(self):
+        """Conecta ao SQLite"""
+        try:
+            self.connection = sqlite3.connect(self.sqlite_path)
+            print(f"✅ Conectado ao SQLite: {self.sqlite_path}")
+            return True
+        except Exception as e:
+            print(f"❌ Erro ao conectar ao SQLite: {e}")
+            print("📊 Usando modo SIMULAÇÃO")
+            self.use_mock = True
+            return False
+
+    def _connect_oracle(self):
+        """Conecta ao Oracle"""
+        if not ORACLE_AVAILABLE:
+            print("❌ oracledb não disponível")
+            print("📊 Usando modo SIMULAÇÃO")
+            self.use_mock = True
+            return False
 
         try:
             if not all([self.user, self.password, self.dsn]):
@@ -50,7 +119,7 @@ class DatabaseConnection:
             return True
 
         except Exception as e:
-            print(f"❌ Erro ao conectar ao banco: {e}")
+            print(f"❌ Erro ao conectar ao Oracle: {e}")
             print("📊 Usando modo SIMULAÇÃO")
             self.use_mock = True
             return False
@@ -67,11 +136,35 @@ class DatabaseConnection:
             return self._get_mock_data(query)
 
         try:
+            # Adaptar query para SQLite se necessário
+            if self.db_type == 'sqlite':
+                query = self._adapt_query_for_sqlite(query)
+
             df = pd.read_sql(query, self.connection, params=params)
             return df
         except Exception as e:
             print(f"❌ Erro ao executar query: {e}")
             return pd.DataFrame()
+
+    def _adapt_query_for_sqlite(self, query):
+        """Adapta queries Oracle para SQLite"""
+        # Substituir TO_TIMESTAMP por datetime
+        query = query.replace('TO_TIMESTAMP', 'datetime')
+
+        # Substituir FETCH FIRST N ROWS ONLY por LIMIT
+        if 'FETCH FIRST' in query:
+            import re
+            query = re.sub(
+                r'FETCH FIRST\s+:num_rows\s+ROWS ONLY',
+                'LIMIT :num_rows',
+                query,
+                flags=re.IGNORECASE
+            )
+
+        # Substituir NVL por COALESCE (caso exista)
+        query = query.replace('NVL(', 'COALESCE(')
+
+        return query
 
     def _get_mock_data(self, query):
         """Retorna dados mockados para testes sem banco"""
