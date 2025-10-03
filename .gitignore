@@ -78,3 +78,22 @@ fabric.properties
 .idea/caches/build_file_checksums.ser
 
 .idea
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+
+# SQLite databases (local testing)
+*.db
+*.sqlite
+*.sqlite3
+
+# Data files (except CSV source)
+data/farmtech.db
