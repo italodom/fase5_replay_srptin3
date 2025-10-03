@@ -138,7 +138,22 @@ delay(30000); // 30 segundos
   - Função `get_alertas_ativos()`
   - Função `get_metricas_ml()`
   - Função `get_kpis()`
-  - **Modo simulação** com dados mockados (não precisa de Oracle)
+  - **3 modos de operação**:
+    - ✅ Oracle (produção)
+    - ✅ SQLite (teste local)
+    - ✅ Mock (simulação sem banco)
+  - Auto-detecção inteligente (Oracle → SQLite → Mock)
+  - Adaptação automática de queries (Oracle SQL → SQLite)
+
+#### 8.5 SQLite para Testes Locais
+- [x] Criar `/dashboard/create_sqlite_db.py`:
+  - Cria banco SQLite a partir do CSV
+  - Popula tabelas Leitura e Alerta
+  - Gera 14.400 leituras
+  - Cria índices para performance
+  - Gera alertas automáticos
+- [x] Testar criação: `python dashboard/create_sqlite_db.py` ✅
+- [x] Testar conexão: `python dashboard/db_connection.py` ✅ (14.400 leituras)
 
 ### 9. Criar README do Dashboard
 - [x] Criar `/dashboard/README.md`:
@@ -147,6 +162,12 @@ delay(30000); // 30 segundos
   - Modo simulação vs produção
   - Troubleshooting
   - Descrição de componentes
+
+### ✅ FASE 3 CONCLUÍDA
+**Commits realizados:**
+- `e2a2959` - feat: adicionar dashboard Streamlit completo
+- `ba0ff8e` - feat: adicionar suporte SQLite para testes locais
+- `c9e6919` - fix: corrigir queries e aliases SQLite
 
 ---
 
