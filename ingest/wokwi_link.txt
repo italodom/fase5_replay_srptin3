@@ -1,0 +1,8 @@
+Link do Projeto Wokwi (Sprint 2):
+https://wokwi.com/projects/433508321885341697
+
+Descrição:
+Simulação ESP32 + DHT22 (Temperatura e Umidade)
+Sensor conectado no GPIO 15
+LED indicador no GPIO 2
+Serial: 115200 baud

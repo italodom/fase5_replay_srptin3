@@ -59,10 +59,11 @@ oracledb>=1.4.0
 ## **FASE 2: SIMULAÇÃO ESP32 E COLETA** (45 min)
 
 ### 4. Reaproveitar Simulação do Sprint 2
-- [ ] Copiar `/esp32/circuito.ino` do Sprint 2 para `/ingest/sketch.ino`
-- [ ] Ajustar delay de 2s para 30s no código
-- [ ] Criar `/ingest/wokwi_link.txt` com: `https://wokwi.com/projects/433508321885341697`
-- [ ] Copiar `/assets/cicuito.jpeg` do Sprint 2 para `/ingest/prints/circuit.png`
+- [x] Copiar `/esp32/circuito.ino` do Sprint 2 para `/ingest/sketch.ino`
+- [x] Ajustar delay de 2s para 30s no código
+- [x] Criar `/ingest/wokwi_link.txt` com: `https://wokwi.com/projects/433508321885341697`
+- [x] Copiar `/assets/cicuito.jpeg` do Sprint 2 para `/ingest/prints/circuit.png`
+- [x] Copiar logo FIAP para `/dashboard/assets/logo-fiap.png`
 
 **Ajustes necessários no `sketch.ino`:**
 ```cpp
@@ -74,27 +75,26 @@ delay(30000); // 30 segundos
 ```
 
 ### 5. Criar Estrutura de Ingestão
-- [ ] Salvar `/ingest/sketch.ino` (código do ESP32 ajustado)
-- [ ] Exportar `diagram.json` do Wokwi (se disponível)
-- [ ] Tirar print do Monitor Serial e salvar como `/ingest/prints/monitor_serial.png`
+- [x] Salvar `/ingest/sketch.ino` (código do ESP32 ajustado)
+- [ ] ~~Exportar `diagram.json` do Wokwi~~ (não necessário - link já salvo)
+- [ ] Tirar print do Monitor Serial e salvar como `/ingest/prints/monitor_serial.png` (manual)
 
-### 6. Criar Script Python de Ingestão
-- [ ] Criar `/ingest/ingest_data.py`:
-  - Ler dados da porta Serial (ou arquivo simulado)
-  - Conectar ao banco Oracle
-  - Inserir leituras na tabela `LEITURA`
-  - Gerar alertas quando necessário
-- [ ] Criar `/ingest/serial_simulator.py` (simular ESP32 sem hardware):
-  - Ler do CSV em `/data/sensor_data.csv`
-  - Simular envio via Serial
-- [ ] Testar inserção no banco
-
-### 7. Criar Gráfico de Leituras Iniciais
-- [ ] Adaptar `/scripts/generate_data.py` ou criar `/ingest/visualize_readings.py`:
-  - Basear no `main.py` do Sprint 2
-  - Ler últimas 100 leituras do banco Oracle
+### 6. Criar Script Python de Visualização
+- [x] Criar `/ingest/visualize_readings.py`:
+  - Adaptado do `main.py` do Sprint 2
+  - Ler últimas 100 leituras do CSV
   - Gráfico de linha temporal (temperatura e umidade)
+  - Linhas de threshold (Normal/Alerta/Crítico)
+  - Estatísticas (média, min, max, desvio)
   - Exportar como `/ingest/prints/readings_chart.png`
+
+### 7. Documentação de Ingestão
+- [x] Criar `/ingest/README.md`:
+  - Descrição dos arquivos
+  - Como usar sketch.ino e Wokwi
+  - Como rodar visualize_readings.py
+  - Fluxo de ingestão documentado
+  - Próximos passos para produção
 
 ---
 
