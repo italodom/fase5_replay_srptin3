@@ -141,6 +141,11 @@ class DatabaseConnection:
                 query = self._adapt_query_for_sqlite(query)
 
             df = pd.read_sql(query, self.connection, params=params)
+
+            # SQLite retorna colunas em minúsculas, converter para maiúsculas
+            if self.db_type == 'sqlite' and not df.empty:
+                df.columns = df.columns.str.upper()
+
             return df
         except Exception as e:
             print(f"❌ Erro ao executar query: {e}")

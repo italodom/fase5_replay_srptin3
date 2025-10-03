@@ -7,8 +7,11 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from datetime import datetime
+from datetime import datetime, timedelta
+from streamlit_autorefresh import st_autorefresh
 import os
+import random
+import time
 
 # Importar módulos locais
 from config import (
@@ -30,24 +33,116 @@ st.set_page_config(**DASHBOARD_CONFIG)
 
 st.markdown("""
 <style>
+    /* Cards KPI com fundo sutil */
     .stMetric {
-        background-color: #f0f2f6;
-        padding: 15px;
-        border-radius: 10px;
+        background: rgba(40, 167, 69, 0.08);
+        padding: 20px;
+        border-radius: 12px;
+        border: 1px solid rgba(40, 167, 69, 0.2);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
+
+    /* Labels dos KPIs */
+    [data-testid="stMetricLabel"] {
+        color: #28a745 !important;
+        font-weight: 600 !important;
+        font-size: 0.9rem !important;
+    }
+
+    /* Valores dos KPIs */
+    [data-testid="stMetricValue"] {
+        color: #e8e8e8 !important;
+        font-size: 2.2rem !important;
+        font-weight: 700 !important;
+    }
+
+    /* Delta dos KPIs */
+    [data-testid="stMetricDelta"] {
+        font-size: 1.2rem !important;
+    }
+
+    /* Alertas críticos dark mode */
     .alert-critico {
-        background-color: #f8d7da;
-        border: 2px solid #f5c6cb;
-        border-radius: 10px;
+        background: rgba(220, 53, 69, 0.2);
+        border: 2px solid #dc3545;
+        border-radius: 12px;
         padding: 20px;
         margin: 10px 0;
+        box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
     }
+
+    /* Alertas de atenção dark mode */
     .alert-warning {
-        background-color: #fff3cd;
-        border: 2px solid #ffeaa7;
-        border-radius: 10px;
+        background: rgba(255, 193, 7, 0.15);
+        border: 2px solid #ffc107;
+        border-radius: 12px;
         padding: 15px;
         margin: 10px 0;
+        box-shadow: 0 4px 12px rgba(255, 193, 7, 0.2);
+    }
+
+    /* Título principal */
+    h1 {
+        color: #28a745 !important;
+        font-weight: 700 !important;
+        text-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+    }
+
+    /* Subtítulos sem borda */
+    h2 {
+        color: #ffffff !important;
+        font-weight: 600 !important;
+        margin-top: 30px !important;
+        margin-bottom: 15px !important;
+    }
+
+    h3 {
+        color: #adb5bd !important;
+    }
+
+    /* Tabs personalizadas */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        border-bottom: none !important;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        background-color: rgba(40, 167, 69, 0.1);
+        border-radius: 8px 8px 0 0;
+        padding: 10px 20px;
+        border: 1px solid rgba(40, 167, 69, 0.3);
+        border-bottom: none !important;
+    }
+
+    .stTabs [aria-selected="true"] {
+        background-color: rgba(40, 167, 69, 0.3) !important;
+        border: 1px solid #28a745 !important;
+        border-bottom: none !important;
+    }
+
+    /* Remover linha vermelha do tabpanel */
+    .stTabs [data-baseweb="tab-panel"] {
+        border-top: none !important;
+    }
+
+    /* Animação piscante para alertas */
+    @keyframes blink-alerta {
+        0%, 100% { background-color: rgba(255, 193, 7, 0.2); }
+        50% { background-color: rgba(255, 193, 7, 0.5); }
+    }
+
+    @keyframes blink-critico {
+        0%, 100% { background-color: rgba(220, 53, 69, 0.3); }
+        50% { background-color: rgba(220, 53, 69, 0.6); }
+    }
+
+    /* Classes para linhas piscantes */
+    .alerta-row {
+        animation: blink-alerta 2s infinite;
+    }
+
+    .critico-row {
+        animation: blink-critico 1s infinite;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -62,6 +157,105 @@ def get_db_connection():
     db = DatabaseConnection()
     db.connect()
     return db
+
+def generate_simulated_reading():
+    """Gera leitura simulada de temperatura e umidade com distribuição realista"""
+    # Distribuição: 70% Normal, 20% Alerta, 10% Crítico
+    rand = random.random()
+
+    def get_quality(value, sensor_type):
+        thresholds = THRESHOLDS[sensor_type]
+        if value < thresholds['critico_baixo'] or value > thresholds['critico_alto']:
+            return 'Critico'
+        elif value < thresholds['min_ideal'] or value > thresholds['max_ideal']:
+            return 'Alerta'
+        else:
+            return 'Normal'
+
+    now = datetime.now()
+
+    if rand < 0.7:  # 70% Normal
+        temp = random.uniform(18, 28)  # Faixa ideal
+        humid = random.uniform(50, 80)  # Faixa ideal
+    elif rand < 0.9:  # 20% Alerta
+        if random.random() < 0.5:
+            temp = random.choice([random.uniform(15, 18), random.uniform(28, 32)])  # Alerta
+            humid = random.uniform(50, 80)  # Normal
+        else:
+            temp = random.uniform(18, 28)  # Normal
+            humid = random.choice([random.uniform(40, 50), random.uniform(80, 90)])  # Alerta
+    else:  # 10% Crítico
+        if random.random() < 0.5:
+            temp = random.choice([random.uniform(13, 15), random.uniform(32, 35)])  # Crítico
+            humid = random.uniform(50, 80)  # Normal
+        else:
+            temp = random.uniform(18, 28)  # Normal
+            humid = random.choice([random.uniform(35, 40), random.uniform(90, 95)])  # Crítico
+
+    temp_quality = get_quality(temp, 'temperatura')
+    humid_quality = get_quality(humid, 'umidade')
+
+    return {
+        'temperatura': {'valor': round(temp, 1), 'qualidade': temp_quality, 'timestamp': now},
+        'umidade': {'valor': round(humid, 1), 'qualidade': humid_quality, 'timestamp': now}
+    }
+
+def insert_simulated_reading(db):
+    """Insere leitura simulada no banco SQLite baseado em sensores reais"""
+    if db.db_type != 'sqlite':
+        return None
+
+    try:
+        import sqlite3
+        conn = db.connection
+        cursor = conn.cursor()
+
+        # Buscar equipamentos disponíveis
+        cursor.execute("SELECT DISTINCT equipamento FROM Leitura LIMIT 1")
+        equipamento_row = cursor.fetchone()
+        equipamento = equipamento_row[0] if equipamento_row else '1'
+
+        reading = generate_simulated_reading()
+
+        # Inserir temperatura
+        cursor.execute("""
+            INSERT INTO Leitura (id_sensor, tipo_sensor, equipamento, valor, data_hora, qualidade)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (1, 'Temperatura', equipamento, reading['temperatura']['valor'],
+              reading['temperatura']['timestamp'].isoformat(), reading['temperatura']['qualidade']))
+
+        temp_id = cursor.lastrowid
+
+        # Inserir umidade
+        cursor.execute("""
+            INSERT INTO Leitura (id_sensor, tipo_sensor, equipamento, valor, data_hora, qualidade)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (2, 'Umidade', equipamento, reading['umidade']['valor'],
+              reading['umidade']['timestamp'].isoformat(), reading['umidade']['qualidade']))
+
+        humid_id = cursor.lastrowid
+
+        # Criar alertas SEPARADOS para cada sensor (nunca juntos)
+        if reading['temperatura']['qualidade'] in ['Alerta', 'Critico']:
+            descricao = f"Temperatura em nível de {reading['temperatura']['qualidade'].lower()}: {reading['temperatura']['valor']}°C"
+            cursor.execute("""
+                INSERT INTO Alerta (id_leitura, descricao, nivel_severidade, data_hora_alerta, resolvido)
+                VALUES (?, ?, ?, ?, 'N')
+            """, (temp_id, descricao, reading['temperatura']['qualidade'], reading['temperatura']['timestamp'].isoformat()))
+
+        if reading['umidade']['qualidade'] in ['Alerta', 'Critico']:
+            descricao = f"Umidade em nível de {reading['umidade']['qualidade'].lower()}: {reading['umidade']['valor']}%"
+            cursor.execute("""
+                INSERT INTO Alerta (id_leitura, descricao, nivel_severidade, data_hora_alerta, resolvido)
+                VALUES (?, ?, ?, ?, 'N')
+            """, (humid_id, descricao, reading['umidade']['qualidade'], reading['umidade']['timestamp'].isoformat()))
+
+        conn.commit()
+        return reading
+
+    except Exception as e:
+        st.error(f"Erro ao inserir leitura simulada: {e}")
+        return None
 
 def display_kpi_card(title, value, delta=None, color="primary"):
     """Exibe card de KPI"""
@@ -143,8 +337,20 @@ def create_distribution_chart(df):
         st.warning("Sem dados para exibir")
         return
 
+    # Mapear IDs para nomes de equipamento
+    equipamento_map = {
+        '1': 'Estufa 1',
+        '2': 'Estufa 2',
+        '3': 'Estufa 3',
+        '4': 'Estufa 4',
+        '5': 'Estufa 5'
+    }
+
+    df_copy = df.copy()
+    df_copy['EQUIPAMENTO'] = df_copy['EQUIPAMENTO'].astype(str).map(equipamento_map).fillna(df_copy['EQUIPAMENTO'])
+
     # Contar leituras por equipamento e qualidade
-    dist = df.groupby(['EQUIPAMENTO', 'QUALIDADE']).size().reset_index(name='count')
+    dist = df_copy.groupby(['EQUIPAMENTO', 'QUALIDADE']).size().reset_index(name='count')
 
     fig = px.bar(
         dist,
@@ -169,8 +375,8 @@ def create_heatmap_chart(df):
         st.warning("Sem dados para exibir")
         return
 
-    # Extrair hora do dia
-    df['hora'] = pd.to_datetime(df['DATA_HORA']).dt.hour
+    # Extrair hora do dia (formato misto de datetime)
+    df['hora'] = pd.to_datetime(df['DATA_HORA'], format='mixed').dt.hour
 
     # Filtrar apenas alertas e críticos
     df_alertas = df[df['QUALIDADE'].isin(['Alerta', 'Critico'])]
@@ -222,23 +428,27 @@ def main():
     # Conectar ao banco
     db = get_db_connection()
 
+    # Auto-refresh de 5 segundos automático
+    st_autorefresh(interval=5000, key="datarefresh")
+
+    # Inserir leitura simulada (apenas para SQLite)
+    if db.db_type == 'sqlite':
+        reading = insert_simulated_reading(db)
+        if reading:
+            # Mostrar toast com nova leitura
+            if reading['temperatura']['qualidade'] == 'Critico' or reading['umidade']['qualidade'] == 'Critico':
+                st.toast(f"🚨 ALERTA CRÍTICO! Temp: {reading['temperatura']['valor']}°C, Umid: {reading['umidade']['valor']}%", icon="🔴")
+            elif reading['temperatura']['qualidade'] == 'Alerta' or reading['umidade']['qualidade'] == 'Alerta':
+                st.toast(f"⚠️ Alerta! Temp: {reading['temperatura']['valor']}°C, Umid: {reading['umidade']['valor']}%", icon="⚠️")
+
     # Sidebar
     with st.sidebar:
-        st.image("assets/logo-fiap.png", width=200)
+        st.image("assets/farmtech_logo.svg", width=200)
         st.markdown("---")
         st.markdown("### ⚙️ Configurações")
 
-        # Seletor de refresh
-        auto_refresh = st.checkbox(
-            "Auto-refresh",
-            value=False,
-            help=f"Atualiza a cada {AUTO_REFRESH_INTERVAL}s"
-        )
-
-        if auto_refresh:
-            st_autorefresh = st.empty()
-            with st_autorefresh:
-                st.info(f"🔄 Atualizando a cada {AUTO_REFRESH_INTERVAL}s")
+        # Simulação ativa
+        st.success("🔄 Simulação Ativa  \n(Atualiza a cada 5s)")
 
         st.markdown("---")
         st.markdown("### 📊 Informações")
@@ -263,7 +473,8 @@ def main():
     with col1:
         display_kpi_card(
             "Total de Leituras",
-            f"{kpis['total_leituras']:,}"
+            f"{kpis['total_leituras']:,}",
+            delta="📊"
         )
 
     with col2:
@@ -341,21 +552,45 @@ def main():
         alertas_filtrados = alertas_df[alertas_df['NIVEL_SEVERIDADE'].isin(filtro_severidade)]
 
         if not alertas_filtrados.empty:
-            # Formatar tabela
-            alertas_display = alertas_filtrados[[
-                'EQUIPAMENTO', 'TIPO_SENSOR', 'DESCRICAO',
-                'NIVEL_SEVERIDADE', 'DATA_HORA_ALERTA'
-            ]].copy()
+            # Mapear IDs para nomes de equipamento
+            equipamento_map = {
+                '1': 'Estufa 1',
+                '2': 'Estufa 2',
+                '3': 'Estufa 3',
+                '4': 'Estufa 4',
+                '5': 'Estufa 5'
+            }
 
-            alertas_display['DATA_HORA_ALERTA'] = pd.to_datetime(
-                alertas_display['DATA_HORA_ALERTA']
-            ).dt.strftime('%d/%m/%Y %H:%M')
+            # Formatar tabela com HTML customizado para animações
+            html_table = '<table style="width:100%; border-collapse: collapse; margin-top: 10px;">'
+            html_table += '<thead><tr style="background-color: #2c3e50; color: white;">'
+            html_table += '<th style="padding: 12px; text-align: left;">EQUIPAMENTO</th>'
+            html_table += '<th style="padding: 12px; text-align: left;">TIPO_SENSOR</th>'
+            html_table += '<th style="padding: 12px; text-align: left;">DESCRIÇÃO</th>'
+            html_table += '<th style="padding: 12px; text-align: left;">SEVERIDADE</th>'
+            html_table += '<th style="padding: 12px; text-align: left;">DATA/HORA</th>'
+            html_table += '</tr></thead><tbody>'
 
-            st.dataframe(
-                alertas_display,
-                use_container_width=True,
-                hide_index=True
-            )
+            for _, row in alertas_filtrados.iterrows():
+                # Classe CSS baseada na severidade
+                row_class = 'critico-row' if row['NIVEL_SEVERIDADE'] == 'Critico' else 'alerta-row'
+
+                data_formatada = pd.to_datetime(row['DATA_HORA_ALERTA'], format='mixed').strftime('%d/%m/%Y %H:%M')
+
+                # Mapear equipamento ID para nome
+                equipamento_nome = equipamento_map.get(str(row["EQUIPAMENTO"]), row["EQUIPAMENTO"])
+
+                html_table += f'<tr class="{row_class}" style="border-bottom: 1px solid #444;">'
+                html_table += f'<td style="padding: 10px;">{equipamento_nome}</td>'
+                html_table += f'<td style="padding: 10px;">{row["TIPO_SENSOR"]}</td>'
+                html_table += f'<td style="padding: 10px;">{row["DESCRICAO"]}</td>'
+                html_table += f'<td style="padding: 10px;"><strong>{row["NIVEL_SEVERIDADE"]}</strong></td>'
+                html_table += f'<td style="padding: 10px;">{data_formatada}</td>'
+                html_table += '</tr>'
+
+            html_table += '</tbody></table>'
+
+            st.markdown(html_table, unsafe_allow_html=True)
         else:
             st.info("Nenhum alerta com os filtros selecionados")
 
