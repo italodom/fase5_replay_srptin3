@@ -58,8 +58,7 @@ def populate_from_csv(conn):
     print(f"📊 Lendo {len(df)} registros do CSV...")
 
     # Inserir na tabela Leitura
-    df_insert = df[['id_sensor', 'tipo_sensor', 'equipamento', 'estufa', 'valor', 'data_hora', 'qualidade']].copy()
-    df_insert.rename(columns={'estufa': 'equipamento'}, inplace=True)
+    df_insert = df[['id_sensor', 'tipo_sensor', 'equipamento', 'valor', 'data_hora', 'qualidade']].copy()
 
     df_insert.to_sql('Leitura', conn, if_exists='replace', index_label='id_leitura')
     print(f"✅ {len(df_insert)} leituras inseridas")

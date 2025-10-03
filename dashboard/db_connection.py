@@ -164,6 +164,13 @@ class DatabaseConnection:
         # Substituir NVL por COALESCE (caso exista)
         query = query.replace('NVL(', 'COALESCE(')
 
+        # Ajustar alias para maiúsculas (SQLite é case-sensitive)
+        query = query.replace(' as total', ' as TOTAL')
+        query = query.replace(' as qualidade', ' as QUALIDADE')
+        query = query.replace(' as tipo_sensor', ' as TIPO_SENSOR')
+        query = query.replace(' as equipamento', ' as EQUIPAMENTO')
+        query = query.replace(' as media_valor', ' as MEDIA_VALOR')
+
         return query
 
     def _get_mock_data(self, query):

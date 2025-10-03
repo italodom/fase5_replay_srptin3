@@ -81,18 +81,15 @@ QUERIES = {
 
     'leituras_recentes': """
         SELECT
-            l.id_leitura,
-            l.id_sensor,
-            ts.nome as tipo_sensor,
-            l.valor,
-            l.data_hora,
-            l.qualidade,
-            e.nome as equipamento
-        FROM Leitura l
-        JOIN Sensor s ON l.id_sensor = s.id_sensor
-        JOIN Tipo_Sensor ts ON s.id_tipo_sensor = ts.id_tipo_sensor
-        JOIN Equipamento e ON s.id_equipamento = e.id_equipamento
-        ORDER BY l.data_hora DESC
+            id_leitura,
+            id_sensor,
+            tipo_sensor,
+            valor,
+            data_hora,
+            qualidade,
+            equipamento
+        FROM Leitura
+        ORDER BY data_hora DESC
         FETCH FIRST :num_rows ROWS ONLY
     """,
 
@@ -103,13 +100,10 @@ QUERIES = {
             a.descricao,
             a.nivel_severidade,
             a.data_hora_alerta,
-            ts.nome as tipo_sensor,
-            e.nome as equipamento
+            l.tipo_sensor,
+            l.equipamento
         FROM Alerta a
         JOIN Leitura l ON a.id_leitura = l.id_leitura
-        JOIN Sensor s ON l.id_sensor = s.id_sensor
-        JOIN Tipo_Sensor ts ON s.id_tipo_sensor = ts.id_tipo_sensor
-        JOIN Equipamento e ON s.id_equipamento = e.id_equipamento
         WHERE a.resolvido = 'N'
         ORDER BY a.data_hora_alerta DESC
     """,
@@ -120,13 +114,7 @@ QUERIES = {
             COUNT(*) as total,
             ROUND(AVG(valor), 2) as media_valor
         FROM Leitura
-        WHERE id_sensor IN (
-            SELECT id_sensor FROM Sensor
-            WHERE id_tipo_sensor IN (
-                SELECT id_tipo_sensor FROM Tipo_Sensor
-                WHERE nome IN ('Temperatura', 'Umidade')
-            )
-        )
+        WHERE tipo_sensor IN ('Temperatura', 'Umidade')
         GROUP BY qualidade
     """,
 }
