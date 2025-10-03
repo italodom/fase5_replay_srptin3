@@ -3,26 +3,27 @@
 ## **FASE 1: ARQUITETURA E ESTRUTURA** (30 min)
 
 ### 1. Criar Diagrama de Arquitetura
-- [ ] Acessar [app.diagrams.net](https://app.diagrams.net)
-- [ ] Criar diagrama com fluxo completo:
-  - **Origem**: ESP32 com sensores (DHT22)
-  - **Transporte**: Serial/MQTT
-  - **Ingestão**: Script Python (`ingest_data.py`)
+- [x] ~~Acessar [app.diagrams.net](https://app.diagrams.net)~~ Usado Mermaid
+- [x] Criar diagrama com fluxo completo:
+  - **Origem**: Simulação (generate_data.py + CSV)
+  - **Transporte**: Arquivo CSV
+  - **Ingestão**: Scripts Python + SQL
   - **Armazenamento**: Banco Oracle (tabelas da Entrega 3)
   - **ML**: Modelo Gradient Boosting (treino/inferência)
   - **Visualização**: Dashboard Streamlit
   - **Alertas**: Sistema de threshold
-- [ ] Salvar como `.drawio` e exportar `.png`
-- [ ] Criar pasta `/docs/arquitetura/`
-- [ ] Adicionar arquivos: `arquitetura_integrada.drawio` e `arquitetura_integrada.png`
+- [ ] ~~Salvar como `.drawio`~~ e exportar `.png` (via mermaid.live)
+- [x] Criar pasta `/docs/arquitetura/`
+- [x] Adicionar arquivo: `arquitetura_integrada.md` (Mermaid)
 
 ### 2. Reorganizar Estrutura de Pastas
-- [ ] Criar `/ingest/` (código ESP32 + scripts de coleta)
-- [ ] Renomear `/sql/` para `/db/`
-- [ ] Criar `/dashboard/`
-- [ ] Criar `/db/evidencias/`
-- [ ] Criar `/dashboard/screenshots/`
-- [ ] Criar `/ingest/prints/`
+- [x] Criar `/ingest/` (código ESP32 + scripts de coleta)
+- [x] Renomear `/sql/` para `/db/`
+- [x] Criar `/dashboard/`
+- [x] Criar `/db/evidencias/`
+- [x] Criar `/dashboard/screenshots/`
+- [x] Criar `/ingest/prints/`
+- [x] Criar `/dashboard/assets/`
 - [ ] Estrutura final:
 ```
 projeto_reply_sprint3/
@@ -43,7 +44,7 @@ projeto_reply_sprint3/
 ```
 
 ### 3. Atualizar requirements.txt
-- [ ] Adicionar dependências do dashboard:
+- [x] Adicionar dependências do dashboard:
 ```txt
 # Dashboard
 streamlit>=1.28.0
