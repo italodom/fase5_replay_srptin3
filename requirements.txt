@@ -1,4 +1,5 @@
 # FarmTech Solutions - Dependências Python
+
 # Machine Learning e Análise de Dados
 pandas>=1.5.0
 numpy>=1.21.0
@@ -12,9 +13,6 @@ plotly>=5.14.0
 
 # Dashboard
 streamlit>=1.28.0
-
-# Banco de Dados Oracle
-oracledb>=1.4.0
 
 # Jupyter Notebook
 jupyter>=1.0.0
