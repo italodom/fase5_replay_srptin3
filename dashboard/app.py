@@ -20,16 +20,31 @@ st.set_page_config(
     page_title="FarmTech - Monitoramento de Estufas",
     page_icon="🌱",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': None,
+        'Report a bug': None,
+        'About': None
+    }
 )
 
-# CSS customizado
+# CSS customizado - Dark Mode
 st.markdown("""
     <style>
+    /* Dark Mode - Fundo da página */
+    .stApp {
+        background: linear-gradient(to bottom, #1a1a1a 0%, #0d1117 100%);
+    }
+
+    /* Dark Mode - Sidebar */
+    [data-testid="stSidebar"] {
+        background-color: #0d1117;
+    }
+
     .main-header {
         font-size: 2.8em;
         font-weight: 700;
-        background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+        background: linear-gradient(135deg, #3fb950 0%, #2ea043 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -39,14 +54,44 @@ st.markdown("""
     }
     .subtitle {
         font-size: 1.1em;
-        color: #7f8c8d;
+        color: #8b949e;
         text-align: center;
         margin-bottom: 40px;
         font-weight: 400;
     }
-    /* Esconder elementos desnecessários do Streamlit */
+
+    /* Dark Mode - Containers com borda */
+    [data-testid="stVerticalBlock"] > div:has(> div.element-container) {
+        background-color: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 8px;
+    }
+
+    /* Dark Mode - Métricas */
+    [data-testid="stMetric"] {
+        background-color: #0d1117;
+        padding: 10px;
+        border-radius: 6px;
+    }
+
+    /* Dark Mode - Texto */
+    .stMarkdown, p, span, div {
+        color: #c9d1d9 !important;
+    }
+
+    /* Dark Mode - Separadores */
+    hr {
+        border-color: #30363d !important;
+    }
+
+    /* Esconder elementos desnecessários */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
+
+    /* Espaçamento entre colunas */
+    [data-testid="column"] {
+        padding: 0 8px;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -98,8 +143,8 @@ class DashboardApp:
             st.warning("⚠️ Nenhuma estufa encontrada. Execute o script de inicialização do banco de dados.")
             return
 
-        # Exibir estufas em uma única linha (4 colunas)
-        cols = st.columns(4)
+        # Exibir estufas em uma única linha (4 colunas com espaçamento)
+        cols = st.columns(4, gap="medium")
 
         for idx, estufa_data in enumerate(estufas_data):
             with cols[idx]:
