@@ -113,6 +113,8 @@ class DashboardApp:
 
         # Sidebar
         with st.sidebar:
+            st.markdown("# Menu")
+            st.markdown("---")
             st.image("https://via.placeholder.com/200x80/28a745/ffffff?text=FarmTech",
                     use_container_width=True)
             st.markdown("---")
@@ -150,28 +152,29 @@ class DashboardApp:
             with cols[idx]:
                 EstufaCard.render(estufa_data)
 
-        # Footer moderno
+        # Footer moderno - Dark Mode
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown(f"""
             <div style="
                 display: flex;
                 justify-content: space-around;
                 padding: 20px;
-                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                background: linear-gradient(135deg, #161b22 0%, #0d1117 100%);
+                border: 1px solid #30363d;
                 border-radius: 10px;
                 margin-top: 20px;
             ">
                 <div style="text-align: center;">
-                    <p style="margin: 0; font-size: 0.9em; color: #6c757d;">📅 Última atualização</p>
-                    <p style="margin: 4px 0 0 0; font-weight: 600; color: #2c3e50;">{time.strftime("%d/%m/%Y %H:%M:%S")}</p>
+                    <p style="margin: 0; font-size: 0.9em; color: #8b949e;">📅 Última atualização</p>
+                    <p style="margin: 4px 0 0 0; font-weight: 600; color: #c9d1d9;">{time.strftime("%d/%m/%Y %H:%M:%S")}</p>
                 </div>
                 <div style="text-align: center;">
-                    <p style="margin: 0; font-size: 0.9em; color: #6c757d;">🔗 Status do sistema</p>
-                    <p style="margin: 4px 0 0 0; font-weight: 600; color: #27ae60;">Online ✅</p>
+                    <p style="margin: 0; font-size: 0.9em; color: #8b949e;">🔗 Status do sistema</p>
+                    <p style="margin: 4px 0 0 0; font-weight: 600; color: #3fb950;">Online ✅</p>
                 </div>
                 <div style="text-align: center;">
-                    <p style="margin: 0; font-size: 0.9em; color: #6c757d;">📈 Estufas ativas</p>
-                    <p style="margin: 4px 0 0 0; font-weight: 600; color: #2c3e50;">{len(estufas_data)}</p>
+                    <p style="margin: 0; font-size: 0.9em; color: #8b949e;">📈 Estufas ativas</p>
+                    <p style="margin: 4px 0 0 0; font-weight: 600; color: #c9d1d9;">{len(estufas_data)}</p>
                 </div>
             </div>
         """, unsafe_allow_html=True)

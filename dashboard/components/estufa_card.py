@@ -77,7 +77,8 @@ class EstufaCard:
             # Status badge usando markdown
             st.markdown(
                 f"""<div style="background-color: {color}; color: white; padding: 12px;
-                border-radius: 6px; text-align: center; font-weight: bold; font-size: 0.9em; letter-spacing: 0.5px;">
+                border-radius: 6px; text-align: center; font-weight: bold; font-size: 0.9em; letter-spacing: 0.5px;
+                margin-bottom: 12px;">
                 {status.upper()}
                 </div>""",
                 unsafe_allow_html=True
