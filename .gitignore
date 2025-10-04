@@ -97,3 +97,5 @@ env/
 
 # Data files (except CSV source)
 data/farmtech.db
+
+.playwright-mcp

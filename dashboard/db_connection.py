@@ -203,13 +203,13 @@ class DatabaseConnection:
             return pd.DataFrame({
                 'ID_ALERTA': [1, 2, 3],
                 'ID_LEITURA': [1001, 1502, 2003],
-                'DESCRICAO': [
+                'MENSAGEM': [
                     'Temperatura acima do limite',
                     'Umidade abaixo do ideal',
                     'Temperatura crítica'
                 ],
-                'NIVEL_SEVERIDADE': ['Alerta', 'Alerta', 'Critico'],
-                'DATA_HORA_ALERTA': [
+                'TIPO_ALERTA': ['Alerta Temperatura', 'Alerta Umidade', 'Crítico Temperatura'],
+                'DATA_ALERTA': [
                     datetime.now() - timedelta(hours=2),
                     datetime.now() - timedelta(hours=1),
                     datetime.now() - timedelta(minutes=30)

@@ -18,13 +18,13 @@ def create_tables(conn):
     """Cria tabelas no SQLite"""
     cursor = conn.cursor()
 
-    # Tabela LEITURA (simplificada)
+    # Tabela LEITURA (alinhada com estrutura Oracle)
+    # NOTA: Este script cria uma versão simplificada para testes
+    # Na produção, usar a estrutura completa com todas as tabelas relacionadas
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Leitura (
             id_leitura INTEGER PRIMARY KEY AUTOINCREMENT,
             id_sensor INTEGER,
-            tipo_sensor TEXT,
-            equipamento TEXT,
             valor REAL,
             data_hora TIMESTAMP,
             qualidade TEXT
@@ -36,9 +36,9 @@ def create_tables(conn):
         CREATE TABLE IF NOT EXISTS Alerta (
             id_alerta INTEGER PRIMARY KEY AUTOINCREMENT,
             id_leitura INTEGER,
-            descricao TEXT,
-            nivel_severidade TEXT,
-            data_hora_alerta TIMESTAMP,
+            tipo_alerta TEXT,
+            mensagem TEXT,
+            data_alerta TIMESTAMP,
             resolvido TEXT DEFAULT 'N',
             FOREIGN KEY (id_leitura) REFERENCES Leitura(id_leitura)
         )
@@ -57,8 +57,10 @@ def populate_from_csv(conn):
     df = pd.read_csv(CSV_PATH)
     print(f"📊 Lendo {len(df)} registros do CSV...")
 
-    # Inserir na tabela Leitura
-    df_insert = df[['id_sensor', 'tipo_sensor', 'equipamento', 'valor', 'data_hora', 'qualidade']].copy()
+    # Inserir na tabela Leitura (apenas colunas que existem na estrutura correta)
+    # NOTA: Se CSV tem tipo_sensor e equipamento, eles devem vir de JOINs com outras tabelas
+    colunas_leitura = ['id_sensor', 'valor', 'data_hora', 'qualidade']
+    df_insert = df[colunas_leitura].copy()
 
     df_insert.to_sql('Leitura', conn, if_exists='replace', index_label='id_leitura')
     print(f"✅ {len(df_insert)} leituras inseridas")
@@ -67,24 +69,25 @@ def populate_from_csv(conn):
     cursor = conn.cursor()
 
     # Alertas para leituras críticas
+    # NOTA: Para identificar tipo de sensor, seria necessário JOIN com Sensor e Tipo_Sensor
+    # Como este é um script de teste simplificado, criamos alertas genéricos
     cursor.execute('''
-        INSERT INTO Alerta (id_leitura, descricao, nivel_severidade, data_hora_alerta, resolvido)
+        INSERT INTO Alerta (id_leitura, tipo_alerta, mensagem, data_alerta, resolvido)
         SELECT
             id_leitura,
-            'Temperatura ' || CASE
-                WHEN valor > 32 THEN 'acima do limite crítico (' || valor || '°C)'
-                WHEN valor < 15 THEN 'abaixo do limite crítico (' || valor || '°C)'
-                ELSE 'em nível de alerta'
-            END,
             CASE
-                WHEN qualidade = 'Critico' THEN 'Critico'
+                WHEN qualidade = 'Critico' THEN 'Crítico'
                 ELSE 'Alerta'
+            END,
+            'Leitura ' || CASE
+                WHEN valor > 32 THEN 'acima do limite crítico (' || valor || ')'
+                WHEN valor < 15 THEN 'abaixo do limite crítico (' || valor || ')'
+                ELSE 'em nível de alerta'
             END,
             data_hora,
             'N'
         FROM Leitura
         WHERE qualidade IN ('Critico', 'Alerta')
-        AND tipo_sensor = 'Temperatura'
         LIMIT 10
     ''')
 

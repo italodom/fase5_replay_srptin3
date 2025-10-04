@@ -39,16 +39,16 @@ def gerar_dados_sensores(n_dias=30, leituras_por_dia=48):
         {'id': 10, 'tipo': 'Umidade', 'equipamento': 4, 'estufa': 'Estufa 4'}
     ]
     
-    # Parâmetros por tipo de sensor
+    # Parâmetros por tipo de sensor (aumentado para gerar mais alertas)
     parametros = {
         'Temperatura': {
-            'media_dia': 25, 'desvio_dia': 3,
-            'media_noite': 18, 'desvio_noite': 2,
+            'media_dia': 26, 'desvio_dia': 6,
+            'media_noite': 19, 'desvio_noite': 5,
             'min': 10, 'max': 40
         },
         'Umidade': {
-            'media_dia': 65, 'desvio_dia': 8,
-            'media_noite': 75, 'desvio_noite': 5,
+            'media_dia': 65, 'desvio_dia': 15,
+            'media_noite': 70, 'desvio_noite': 12,
             'min': 30, 'max': 95
         },
         'Umidade Solo': {
@@ -84,21 +84,27 @@ def gerar_dados_sensores(n_dias=30, leituras_por_dia=48):
                     media = param['media_noite']
                     desvio = param['desvio_noite']
                 
-                # Adicionar variação sazonal
-                variacao_sazonal = 5 * np.sin(2 * np.pi * dia / 30)
+                # Adicionar variação sazonal (aumentada para gerar mais variabilidade)
+                variacao_sazonal = 8 * np.sin(2 * np.pi * dia / 30)
                 
                 # Gerar valor com ruído
                 valor = np.random.normal(media + variacao_sazonal, desvio)
                 
                 # Aplicar limites
                 valor = np.clip(valor, param['min'], param['max'])
-                
-                # Simular anomalias ocasionais (2% de chance)
-                if random.random() < 0.02:
-                    if random.random() < 0.5:
-                        valor = valor * 1.3  # Pico alto
+
+                # Simular anomalias ocasionais (15% de chance - aumentado para fins acadêmicos)
+                if random.random() < 0.15:
+                    anomalia_tipo = random.random()
+                    if anomalia_tipo < 0.4:
+                        # Pico alto extremo (40-60% acima)
+                        valor = valor * random.uniform(1.4, 1.6)
+                    elif anomalia_tipo < 0.8:
+                        # Pico baixo extremo (40-60% abaixo)
+                        valor = valor * random.uniform(0.4, 0.6)
                     else:
-                        valor = valor * 0.7  # Pico baixo
+                        # Anomalia moderada
+                        valor = valor * random.uniform(1.2, 1.35) if random.random() < 0.5 else valor * random.uniform(0.65, 0.8)
                     valor = np.clip(valor, param['min'], param['max'])
                 
                 # Classificar qualidade da leitura
