@@ -40,13 +40,12 @@ class EstufaCard:
         color = cls.COLORS.get(status, '#6c757d')
         emoji = cls.EMOJIS.get(status, '❓')
 
-        # Card com borda colorida
+        # Card com borda colorida (sem fundo)
         st.markdown(f"""
             <div style="
                 border-left: 5px solid {color};
                 padding: 15px;
                 margin: 10px 0;
-                background-color: #f8f9fa;
                 border-radius: 5px;
             ">
                 <h3 style="margin: 0; color: #333;">{emoji} {nome}</h3>

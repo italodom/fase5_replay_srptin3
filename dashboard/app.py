@@ -89,11 +89,11 @@ class DashboardApp:
             st.warning("⚠️ Nenhuma estufa encontrada. Execute o script de inicialização do banco de dados.")
             return
 
-        # Exibir estufas em grid 2x2
-        col1, col2 = st.columns(2)
+        # Exibir estufas em uma única linha (4 colunas)
+        cols = st.columns(4)
 
         for idx, estufa_data in enumerate(estufas_data):
-            with col1 if idx % 2 == 0 else col2:
+            with cols[idx]:
                 EstufaCard.render(estufa_data)
 
         # Footer
