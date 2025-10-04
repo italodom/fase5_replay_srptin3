@@ -81,3 +81,11 @@ class LeituraRepository(BaseRepository):
                 'data_hora': row['data_hora']
             }
         return result
+
+    def count_all_readings(self) -> int:
+        """Retorna o total de leituras no sistema"""
+        query = "SELECT COUNT(*) as total FROM Leitura"
+        rows = self._execute_query(query)
+        if rows:
+            return rows[0]['total']
+        return 0

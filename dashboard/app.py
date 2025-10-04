@@ -111,12 +111,54 @@ class DashboardApp:
         st.markdown('<p class="subtitle">Sistema de Monitoramento de Estufas em Tempo Real</p>',
                    unsafe_allow_html=True)
 
+        # Buscar dados das estufas para KPIs
+        estufas_data = self._get_all_estufas_data()
+
+        # KPIs principais
+        if estufas_data:
+            kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+
+            # Total de leituras no sistema
+            total_leituras = self.leitura_repo.count_all_readings()
+
+            # Temperatura média geral
+            temp_media = sum([e['temperatura'] for e in estufas_data]) / len(estufas_data)
+
+            # Umidade média geral
+            umid_media = sum([e['umidade'] for e in estufas_data]) / len(estufas_data)
+
+            # Total de alertas ativos (Alerta + Crítico)
+            alertas_ativos = sum([1 for e in estufas_data if e['status'] in ['Alerta', 'Critico']])
+
+            with kpi1:
+                st.metric(
+                    label="📊 Total de Leituras",
+                    value=total_leituras
+                )
+
+            with kpi2:
+                st.metric(
+                    label="🌡️ Temperatura Média",
+                    value=f"{temp_media:.1f}°C"
+                )
+
+            with kpi3:
+                st.metric(
+                    label="💧 Umidade Média",
+                    value=f"{umid_media:.1f}%"
+                )
+
+            with kpi4:
+                st.metric(
+                    label="Alertas Ativos",
+                    value=alertas_ativos
+                )
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
         # Sidebar
         with st.sidebar:
             st.markdown("# Menu")
-            st.markdown("---")
-            st.image("https://via.placeholder.com/200x80/28a745/ffffff?text=FarmTech",
-                    use_container_width=True)
             st.markdown("---")
             st.markdown("### ⚙️ Configurações")
 
@@ -127,7 +169,6 @@ class DashboardApp:
             st.markdown("### 📊 Estatísticas Gerais")
 
             # Contador de estufas por status
-            estufas_data = self._get_all_estufas_data()
             status_count = {'Normal': 0, 'Alerta': 0, 'Critico': 0}
             for estufa in estufas_data:
                 status_count[estufa['status']] += 1
