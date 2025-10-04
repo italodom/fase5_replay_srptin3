@@ -165,22 +165,6 @@ class DashboardApp:
             auto_refresh = st.checkbox("🔄 Auto-refresh", value=True)
             refresh_interval = st.slider("Intervalo (segundos)", 1, 10, 3)
 
-            st.markdown("---")
-            st.markdown("### 📊 Estatísticas Gerais")
-
-            # Contador de estufas por status
-            status_count = {'Normal': 0, 'Alerta': 0, 'Critico': 0}
-            for estufa in estufas_data:
-                status_count[estufa['status']] += 1
-
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("✅ Normal", status_count['Normal'])
-            with col2:
-                st.metric("⚠️ Alerta", status_count['Alerta'])
-            with col3:
-                st.metric("🚨 Crítico", status_count['Critico'])
-
         # Container principal
         if not estufas_data:
             st.warning("⚠️ Nenhuma estufa encontrada. Execute o script de inicialização do banco de dados.")
