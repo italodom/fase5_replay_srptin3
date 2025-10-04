@@ -1604,6 +1604,25 @@ def main():
 
         st.markdown("---")
 
+        # Toggle para Simulação de Anomalias
+        st.markdown("### ⚠️ Simulação")
+        anomalias_ativas = st.toggle(
+            "Anomalias e Alertas Críticos",
+            value=st.session_state.get('anomalias_ativas', False),
+            help="Ativa/desativa a simulação de anomalias em sensores e alertas críticos"
+        )
+
+        # Atualizar session state
+        st.session_state['anomalias_ativas'] = anomalias_ativas
+
+        # Indicador visual do estado
+        if anomalias_ativas:
+            st.warning("🚨 **MODO ANOMALIA ATIVO**", icon="⚠️")
+        else:
+            st.success("✅ **MODO NORMAL**", icon="✅")
+
+        st.markdown("---")
+
         # Informações básicas
         st.markdown("### ℹ️ Info")
         st.caption(f"**Atualização:**  \n{datetime.now().strftime('%H:%M:%S')}")
