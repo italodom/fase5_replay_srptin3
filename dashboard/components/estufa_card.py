@@ -2,7 +2,7 @@
 Componente de Card para exibir informações de uma estufa
 """
 import streamlit as st
-from typing import Dict, Optional
+from typing import Dict
 
 
 class EstufaCard:
@@ -32,66 +32,53 @@ class EstufaCard:
         """
         nome = estufa_data.get('nome', 'Estufa')
         cultura = estufa_data.get('cultura', 'N/A')
-        temperatura = estufa_data.get('temperatura')
-        umidade = estufa_data.get('umidade')
+        temperatura = estufa_data.get('temperatura', 0.0)
+        umidade = estufa_data.get('umidade', 0.0)
         status = estufa_data.get('status', 'Normal')
 
         # Cor baseada no status
         color = cls.COLORS.get(status, '#6c757d')
         emoji = cls.EMOJIS.get(status, '❓')
 
-        # Card com borda colorida (sem fundo)
-        st.markdown(f"""
-            <div style="
-                border-left: 5px solid {color};
-                padding: 15px;
-                margin: 10px 0;
-                border-radius: 5px;
-            ">
-                <h3 style="margin: 0; color: #333;">{emoji} {nome}</h3>
-                <p style="margin: 5px 0; color: #666;">📍 Cultura: <strong>{cultura}</strong></p>
-                <hr style="margin: 10px 0;">
-                <div style="display: flex; justify-content: space-around;">
-                    <div style="text-align: center;">
-                        <p style="margin: 0; font-size: 0.9em; color: #666;">🌡️ Temperatura</p>
-                        <p style="margin: 5px 0; font-size: 1.5em; font-weight: bold; color: #333;">
-                            {temperatura:.1f}°C
-                        </p>
-                    </div>
-                    <div style="text-align: center;">
-                        <p style="margin: 0; font-size: 0.9em; color: #666;">💧 Umidade</p>
-                        <p style="margin: 5px 0; font-size: 1.5em; font-weight: bold; color: #333;">
-                            {umidade:.1f}%
-                        </p>
-                    </div>
-                </div>
-                <hr style="margin: 10px 0;">
-                <p style="margin: 0; text-align: center; font-weight: bold; color: {color};">
-                    Status: {status.upper()}
-                </p>
-            </div>
-        """, unsafe_allow_html=True)
+        # Container com borda colorida
+        with st.container():
+            # Header da estufa
+            col_emoji, col_nome = st.columns([1, 11])
+            with col_emoji:
+                st.markdown(f"<h2>{emoji}</h2>", unsafe_allow_html=True)
+            with col_nome:
+                st.markdown(f"### {nome}")
 
-    @classmethod
-    def render_simple_metric(cls, label: str, value: str, status: str = 'Normal'):
-        """
-        Renderiza uma métrica simples
+            st.markdown(f"**📍 Cultura:** {cultura}")
 
-        Args:
-            label: Rótulo da métrica
-            value: Valor a exibir
-            status: Status (Normal, Alerta, Critico)
-        """
-        color = cls.COLORS.get(status, '#6c757d')
-        st.markdown(f"""
-            <div style="
-                padding: 10px;
-                background-color: {color};
-                color: white;
-                border-radius: 5px;
-                text-align: center;
-            ">
-                <p style="margin: 0; font-size: 0.9em;">{label}</p>
-                <p style="margin: 5px 0; font-size: 1.3em; font-weight: bold;">{value}</p>
-            </div>
-        """, unsafe_allow_html=True)
+            # Métricas em colunas
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.metric(
+                    label="🌡️ Temperatura",
+                    value=f"{temperatura:.1f}°C",
+                    delta=None
+                )
+
+            with col2:
+                st.metric(
+                    label="💧 Umidade",
+                    value=f"{umidade:.1f}%",
+                    delta=None
+                )
+
+            # Status badge
+            st.markdown(
+                f'<div style="background-color: {color}; color: white; padding: 8px; '
+                f'border-radius: 5px; text-align: center; font-weight: bold; margin-top: 10px;">'
+                f'{status.upper()}'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+
+            # Linha separadora com cor do status
+            st.markdown(
+                f'<div style="height: 3px; background-color: {color}; margin-top: 10px; border-radius: 2px;"></div>',
+                unsafe_allow_html=True
+            )

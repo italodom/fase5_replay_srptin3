@@ -27,17 +27,26 @@ st.set_page_config(
 st.markdown("""
     <style>
     .main-header {
-        font-size: 2.5em;
-        color: #28a745;
+        font-size: 2.8em;
+        font-weight: 700;
+        background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
         text-align: center;
-        margin-bottom: 20px;
+        margin-bottom: 8px;
+        letter-spacing: -0.5px;
     }
     .subtitle {
-        font-size: 1.2em;
-        color: #6c757d;
+        font-size: 1.1em;
+        color: #7f8c8d;
         text-align: center;
-        margin-bottom: 30px;
+        margin-bottom: 40px;
+        font-weight: 400;
     }
+    /* Esconder elementos desnecessários do Streamlit */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
 
@@ -96,15 +105,31 @@ class DashboardApp:
             with cols[idx]:
                 EstufaCard.render(estufa_data)
 
-        # Footer
-        st.markdown("---")
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.markdown("📅 **Última atualização:** " + time.strftime("%d/%m/%Y %H:%M:%S"))
-        with col2:
-            st.markdown("🔗 **Status do sistema:** Online ✅")
-        with col3:
-            st.markdown("📈 **Estufas ativas:** " + str(len(estufas_data)))
+        # Footer moderno
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown(f"""
+            <div style="
+                display: flex;
+                justify-content: space-around;
+                padding: 20px;
+                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                border-radius: 10px;
+                margin-top: 20px;
+            ">
+                <div style="text-align: center;">
+                    <p style="margin: 0; font-size: 0.9em; color: #6c757d;">📅 Última atualização</p>
+                    <p style="margin: 4px 0 0 0; font-weight: 600; color: #2c3e50;">{time.strftime("%d/%m/%Y %H:%M:%S")}</p>
+                </div>
+                <div style="text-align: center;">
+                    <p style="margin: 0; font-size: 0.9em; color: #6c757d;">🔗 Status do sistema</p>
+                    <p style="margin: 4px 0 0 0; font-weight: 600; color: #27ae60;">Online ✅</p>
+                </div>
+                <div style="text-align: center;">
+                    <p style="margin: 0; font-size: 0.9em; color: #6c757d;">📈 Estufas ativas</p>
+                    <p style="margin: 4px 0 0 0; font-weight: 600; color: #2c3e50;">{len(estufas_data)}</p>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
 
         # Auto-refresh
         if auto_refresh:
