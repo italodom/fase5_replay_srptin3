@@ -75,16 +75,16 @@ class IoTSimulator:
         variacao_temp = random.uniform(-0.5, 0.5) * estado['tendencia_temp']
         nova_temp = estado['temperatura'] + variacao_temp
 
-        # Inverter tendência se atingir limites
-        if nova_temp >= Settings.TEMP_MAX - 1:
+        # Inverter tendência se atingir limites (agora permite valores críticos)
+        if nova_temp >= Settings.TEMP_MAX + 2:
             estado['tendencia_temp'] = -1
-            nova_temp = Settings.TEMP_MAX - 1
-        elif nova_temp <= Settings.TEMP_MIN + 1:
+            nova_temp = Settings.TEMP_MAX + 2
+        elif nova_temp <= Settings.TEMP_MIN - 2:
             estado['tendencia_temp'] = 1
-            nova_temp = Settings.TEMP_MIN + 1
+            nova_temp = Settings.TEMP_MIN - 2
 
-        # Chance aleatória de inverter tendência (10%)
-        if random.random() < 0.1:
+        # Chance aleatória de inverter tendência (15% - aumentado para mais variação)
+        if random.random() < 0.15:
             estado['tendencia_temp'] *= -1
 
         # Calcular umidade inversamente proporcional

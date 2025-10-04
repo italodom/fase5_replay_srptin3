@@ -24,10 +24,10 @@ class Settings:
 
     # Configurações do simulador
     SIMULATION_INTERVAL = 2  # segundos
-    TEMP_MIN = 18.0
-    TEMP_MAX = 32.0
-    HUMIDITY_MIN = 40.0
-    HUMIDITY_MAX = 90.0
+    TEMP_MIN = 16.0  # Pode gerar valores críticos (< 15°C)
+    TEMP_MAX = 34.0  # Pode gerar valores críticos (> 32°C)
+    HUMIDITY_MIN = 35.0  # Pode gerar valores críticos (< 40%)
+    HUMIDITY_MAX = 95.0  # Pode gerar valores críticos (> 90%)
 
     # Configurações do dashboard
     DASHBOARD_REFRESH_INTERVAL = 3  # segundos
