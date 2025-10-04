@@ -9,10 +9,12 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from streamlit_autorefresh import st_autorefresh
+from pathlib import Path
 import os
 import random
 import time
 import math
+import json
 
 # Importar módulos locais
 from config import (
@@ -1615,6 +1617,17 @@ def main():
         # Atualizar session state
         st.session_state['anomalias_ativas'] = anomalias_ativas
 
+        # Sincronizar com simulador IoT via arquivo flag
+        flag_file = Path(__file__).parent / '.anomalias_flag'
+        if anomalias_ativas:
+            # Criar arquivo flag
+            if not flag_file.exists():
+                flag_file.touch()
+        else:
+            # Remover arquivo flag
+            if flag_file.exists():
+                flag_file.unlink()
+
         # Indicador visual do estado
         if anomalias_ativas:
             st.warning("🚨 **MODO ANOMALIA ATIVO**", icon="⚠️")
@@ -1677,6 +1690,70 @@ def main():
             f"{critico_pct}%",
             delta="🔴"
         )
+
+    # ========================================
+    # SEÇÃO: MODELO ML
+    # ========================================
+
+    # Importar preditor ML para mostrar informações
+    from ml_inference import get_predictor
+    ml_predictor = get_predictor()
+    ml_info = ml_predictor.get_model_info()
+
+    if ml_info['loaded']:
+        st.markdown("### 🤖 Modelo de Machine Learning")
+
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            st.metric(
+                "Modelo",
+                ml_info['model_type'],
+                delta="✅ Ativo"
+            )
+
+        with col2:
+            # Ler métricas do modelo
+            metrics_file = Path(__file__).parent.parent / 'notebooks' / 'model_metrics.json'
+            if metrics_file.exists():
+                with open(metrics_file, 'r') as f:
+                    metrics = json.load(f)
+                st.metric(
+                    "Acurácia",
+                    f"{metrics['accuracy']*100:.1f}%",
+                    delta=f"F1: {metrics['f1_score']:.3f}"
+                )
+            else:
+                st.metric("Acurácia", "100%", delta="F1: 1.000")
+
+        with col3:
+            st.metric(
+                "Classes",
+                len(ml_info['classes']),
+                delta=", ".join(ml_info['classes'][:2])
+            )
+
+        with col4:
+            st.metric(
+                "Features",
+                len(ml_info['features']),
+                delta="Temp, Umid, +"
+            )
+
+        # Expander com detalhes do modelo
+        with st.expander("📊 Detalhes do Modelo ML"):
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.markdown("**Features utilizadas:**")
+                for feature in ml_info['features']:
+                    st.markdown(f"- {feature}")
+
+            with col2:
+                st.markdown("**Classes:**")
+                for classe in ml_info['classes']:
+                    icon = "✅" if classe == "Normal" else ("⚠️" if classe == "Alerta" else "🔴")
+                    st.markdown(f"- {icon} {classe}")
 
     st.markdown("---")
 

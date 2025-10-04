@@ -624,15 +624,19 @@ class ActuatorController:
                     # Ligar ventilador se temperatura > max_ideal
                     if value > thresholds['max_ideal']:
                         if not self.is_actuator_active(atuador_id):
-                            self.ligar_atuador(
-                                atuador_id=atuador_id,
+                            self.trigger_actuator(
+                                tipo=tipo_atuador,
+                                equipamento_id=equipment_id,
                                 motivo='Temperatura Alta',
-                                id_leitura_trigger=None  # Poderíamos buscar o id_leitura
+                                id_leitura=None
                             )
                     # Desligar se temperatura < min_ideal
                     elif value < thresholds['min_ideal']:
                         if self.is_actuator_active(atuador_id):
-                            self.desligar_atuador(atuador_id)
+                            self.stop_actuator(
+                                tipo=tipo_atuador,
+                                equipamento_id=equipment_id
+                            )
 
             # Lógica de controle para UMIDADE
             elif sensor_type == 'Umidade':
@@ -640,15 +644,19 @@ class ActuatorController:
                     # Ligar bomba se umidade < min_ideal
                     if value < thresholds['min_ideal']:
                         if not self.is_actuator_active(atuador_id):
-                            self.ligar_atuador(
-                                atuador_id=atuador_id,
+                            self.trigger_actuator(
+                                tipo=tipo_atuador,
+                                equipamento_id=equipment_id,
                                 motivo='Umidade Baixa',
-                                id_leitura_trigger=None
+                                id_leitura=None
                             )
                     # Desligar se umidade > max_ideal
                     elif value > thresholds['max_ideal']:
                         if self.is_actuator_active(atuador_id):
-                            self.desligar_atuador(atuador_id)
+                            self.stop_actuator(
+                                tipo=tipo_atuador,
+                                equipamento_id=equipment_id
+                            )
 
     def is_actuator_active(self, atuador_id: int) -> bool:
         """Verifica se um atuador está ativo"""

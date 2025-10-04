@@ -13,6 +13,7 @@ import os
 # Importar configurações e lógica de atuadores
 from config import THRESHOLDS, ANOMALY_CONFIG
 from actuator_logic import ActuatorController
+from ml_inference import get_predictor
 
 
 class IoTSimulator:
@@ -35,6 +36,10 @@ class IoTSimulator:
         # Estado para anomalias (se ativadas)
         self.anomalias_ativas = False
         self.sensor_anomalies = {}  # {sensor_id: {'tipo': 'oscilacao', 'contador': 5}}
+
+        # Preditor ML para classificação
+        self.ml_predictor = get_predictor()
+        print(f"🤖 ML Predictor: {self.ml_predictor.get_model_info()['loaded']}")
 
     def connect(self):
         """Conecta ao banco de dados"""
@@ -204,8 +209,71 @@ class IoTSimulator:
 
         return value, anomalias
 
-    def get_quality(self, value: float, sensor_type: str) -> str:
-        """Determina qualidade da leitura"""
+    def get_quality_ml(self, sensor_id: int, value: float, sensor_type: str,
+                       timestamp: datetime) -> str:
+        """
+        Determina qualidade da leitura usando ML
+
+        Para fazer predição, busca a última leitura do sensor complementar
+        (se é temp, busca umid; se é umid, busca temp) do mesmo equipamento.
+
+        Args:
+            sensor_id: ID do sensor
+            value: Valor lido
+            sensor_type: 'Temperatura' ou 'Umidade'
+            timestamp: Timestamp da leitura
+
+        Returns:
+            Qualidade: 'Normal', 'Alerta' ou 'Critico'
+        """
+        try:
+            # Buscar equipamento do sensor
+            equipment_id = self.get_sensor_equipment(sensor_id)
+            if not equipment_id:
+                return self._fallback_quality(value, sensor_type)
+
+            # Buscar última leitura do sensor complementar do mesmo equipamento
+            if sensor_type == 'Temperatura':
+                # Buscar umidade
+                self.cursor.execute("""
+                    SELECT l.valor
+                    FROM Leitura l
+                    JOIN Sensor s ON l.id_sensor = s.id_sensor
+                    JOIN Tipo_Sensor ts ON s.id_tipo_sensor = ts.id_tipo_sensor
+                    WHERE s.id_equipamento = ?
+                        AND ts.nome = 'Umidade'
+                    ORDER BY l.data_hora DESC
+                    LIMIT 1
+                """, (equipment_id,))
+                result = self.cursor.fetchone()
+                umidade = float(result[0]) if result else 65.0  # Valor padrão
+                temperatura = value
+            else:  # Umidade
+                # Buscar temperatura
+                self.cursor.execute("""
+                    SELECT l.valor
+                    FROM Leitura l
+                    JOIN Sensor s ON l.id_sensor = s.id_sensor
+                    JOIN Tipo_Sensor ts ON s.id_tipo_sensor = ts.id_tipo_sensor
+                    WHERE s.id_equipamento = ?
+                        AND ts.nome = 'Temperatura'
+                    ORDER BY l.data_hora DESC
+                    LIMIT 1
+                """, (equipment_id,))
+                result = self.cursor.fetchone()
+                temperatura = float(result[0]) if result else 22.0  # Valor padrão
+                umidade = value
+
+            # Fazer predição com ML
+            condicao, confianca = self.ml_predictor.predict(temperatura, umidade, timestamp)
+            return condicao
+
+        except Exception as e:
+            # Em caso de erro, usar fallback
+            return self._fallback_quality(value, sensor_type)
+
+    def _fallback_quality(self, value: float, sensor_type: str) -> str:
+        """Fallback: determina qualidade usando regras simples"""
         sensor_key = 'temperatura' if sensor_type == 'Temperatura' else 'umidade'
         thresholds = THRESHOLDS[sensor_key]
 
@@ -256,15 +324,18 @@ class IoTSimulator:
             # Limites normais
             new_value = max(10, min(35, new_value)) if sensor_type == 'Temperatura' else max(30, min(95, new_value))
 
-        # Determinar qualidade
-        quality = self.get_quality(new_value, sensor_type)
+        # Timestamp
+        timestamp = datetime.now()
+
+        # Determinar qualidade usando ML
+        quality = self.get_quality_ml(sensor_id, new_value, sensor_type, timestamp)
 
         # Inserir leitura no banco
-        timestamp = datetime.now().isoformat()
+        timestamp_iso = timestamp.isoformat()
         self.cursor.execute("""
             INSERT INTO Leitura (id_sensor, valor, data_hora, qualidade)
             VALUES (?, ?, ?, ?)
-        """, (sensor_id, round(new_value, 1), timestamp, quality))
+        """, (sensor_id, round(new_value, 1), timestamp_iso, quality))
 
         # Processar leitura através do controlador (para decidir ações)
         equipment_id = self.get_sensor_equipment(sensor_id)
@@ -293,11 +364,27 @@ class IoTSimulator:
         sensors = self.get_all_sensors()
         print(f"📡 Sensores encontrados: {len(sensors)}")
 
+        # Caminho do arquivo flag para anomalias
+        flag_file = Path(__file__).parent / '.anomalias_flag'
+
         iteration = 0
         try:
             while True:
                 iteration += 1
+
+                # Verificar arquivo flag de anomalias
+                anomalias_ativas_anterior = self.anomalias_ativas
+                self.anomalias_ativas = flag_file.exists()
+
+                # Notificar mudança de estado
+                if self.anomalias_ativas != anomalias_ativas_anterior:
+                    if self.anomalias_ativas:
+                        print(f"\n🚨 MODO ANOMALIA ATIVADO (via flag)")
+                    else:
+                        print(f"\n🟢 MODO NORMAL ATIVADO (via flag)")
+
                 print(f"\n⏱️  Iteração {iteration} - {datetime.now().strftime('%H:%M:%S')}")
+                print(f"   Anomalias: {'ATIVAS' if self.anomalias_ativas else 'DESATIVADAS'}")
 
                 # Simular leitura de cada sensor
                 for sensor_id in sensors:
