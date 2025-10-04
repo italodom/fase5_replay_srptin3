@@ -564,3 +564,98 @@ class ActuatorController:
             }
             for row in rows
         ]
+
+    def process_reading(self, sensor_id: int, equipment_id: int, sensor_type: str,
+                        value: float, quality: str, anomalias: list = None):
+        """
+        Processa uma leitura de sensor e aplica lógica de controle
+
+        Args:
+            sensor_id: ID do sensor
+            equipment_id: ID do equipamento (estufa)
+            sensor_type: 'Temperatura' ou 'Umidade'
+            value: Valor da leitura
+            quality: Qualidade da leitura ('Normal', 'Alerta', 'Critico')
+            anomalias: Lista de anomalias detectadas (opcional)
+        """
+        from config import THRESHOLDS, CRITICAL_ALERT_TYPES
+
+        if anomalias is None:
+            anomalias = []
+
+        # 1. Processar anomalias se houver
+        if anomalias:
+            for anomalia_tipo in anomalias:
+                descricao = CRITICAL_ALERT_TYPES.get(anomalia_tipo, 'Anomalia detectada')
+
+                # Registrar evento crítico
+                self.registrar_evento_critico(
+                    tipo_evento=anomalia_tipo,
+                    equipamento_id=equipment_id,
+                    sensor_id=sensor_id,
+                    descricao=f'{descricao}: {value}'
+                )
+
+                # Atualizar saúde do sensor
+                self.update_sensor_health(
+                    sensor_id=sensor_id,
+                    status='Falha',
+                    increment_anomalous=True,
+                    observacoes=descricao
+                )
+
+        # 2. Aplicar lógica de controle baseada em thresholds
+        sensor_key = 'temperatura' if sensor_type == 'Temperatura' else 'umidade'
+        thresholds = THRESHOLDS[sensor_key]
+
+        # Buscar atuadores deste equipamento
+        self.cursor.execute("""
+            SELECT id_atuador, tipo
+            FROM Atuador
+            WHERE id_equipamento = ? AND status = 'Ativo'
+        """, (equipment_id,))
+
+        atuadores = self.cursor.fetchall()
+
+        for atuador_id, tipo_atuador in atuadores:
+            # Lógica de controle para TEMPERATURA
+            if sensor_type == 'Temperatura':
+                if tipo_atuador == 'Ventilador':
+                    # Ligar ventilador se temperatura > max_ideal
+                    if value > thresholds['max_ideal']:
+                        if not self.is_actuator_active(atuador_id):
+                            self.ligar_atuador(
+                                atuador_id=atuador_id,
+                                motivo='Temperatura Alta',
+                                id_leitura_trigger=None  # Poderíamos buscar o id_leitura
+                            )
+                    # Desligar se temperatura < min_ideal
+                    elif value < thresholds['min_ideal']:
+                        if self.is_actuator_active(atuador_id):
+                            self.desligar_atuador(atuador_id)
+
+            # Lógica de controle para UMIDADE
+            elif sensor_type == 'Umidade':
+                if tipo_atuador == 'Bomba':
+                    # Ligar bomba se umidade < min_ideal
+                    if value < thresholds['min_ideal']:
+                        if not self.is_actuator_active(atuador_id):
+                            self.ligar_atuador(
+                                atuador_id=atuador_id,
+                                motivo='Umidade Baixa',
+                                id_leitura_trigger=None
+                            )
+                    # Desligar se umidade > max_ideal
+                    elif value > thresholds['max_ideal']:
+                        if self.is_actuator_active(atuador_id):
+                            self.desligar_atuador(atuador_id)
+
+    def is_actuator_active(self, atuador_id: int) -> bool:
+        """Verifica se um atuador está ativo"""
+        self.cursor.execute("""
+            SELECT COUNT(*)
+            FROM Acionamento
+            WHERE id_atuador = ? AND data_hora_fim IS NULL
+        """, (atuador_id,))
+
+        return self.cursor.fetchone()[0] > 0

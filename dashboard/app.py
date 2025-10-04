@@ -1030,38 +1030,51 @@ def display_alert_banner(alertas_df):
         """, icon="🚨")
 
 def display_estufa_status():
-    """Exibe status das estufas em formato horizontal"""
-    init_estufa_state()
-
+    """Exibe status das estufas em formato horizontal - 100% do banco"""
     st.markdown("### 🏭 Status das Estufas")
 
     # Grid horizontal (4 colunas para 4 estufas)
     cols = st.columns(4)
 
-    estufas = list(st.session_state.estufa_state.items())
-
-    # Obter conexão com banco para consultar alertas e atuadores
+    # Obter conexão com banco
     db = get_db_connection()
 
-    for idx, (estufa_nome, state) in enumerate(estufas):
-        with cols[idx]:
-            _render_estufa_card(estufa_nome, state, db)
+    # Buscar equipamentos (estufas) do banco
+    if db.db_type == 'sqlite':
+        cursor = db.connection.cursor()
+        cursor.execute("SELECT id_equipamento, nome FROM Equipamento ORDER BY id_equipamento")
+        estufas = cursor.fetchall()
 
-def _render_estufa_card(estufa_nome, state, db):
-    """Renderiza card individual de uma estufa"""
+        for idx, (estufa_id, estufa_nome) in enumerate(estufas):
+            with cols[idx]:
+                _render_estufa_card(estufa_id, estufa_nome, db)
 
-    # Extrair ID da estufa (ex: "Estufa 1" -> 1)
-    estufa_id = int(estufa_nome.split()[1])
+def _render_estufa_card(estufa_id, estufa_nome, db):
+    """Renderiza card individual de uma estufa - 100% do banco"""
 
     # Cor única para todas as estufas
     estufa_color = '#28a745'  # Verde padrão
 
-    # Buscar última leitura do banco para esta estufa
-    temp_atual = state['temp']
-    humid_atual = state['humid']
+    # Valores padrão
+    temp_atual = 0.0
+    humid_atual = 0.0
+    cultura = "N/A"
 
     if db.db_type == 'sqlite':
         cursor = db.connection.cursor()
+
+        # Buscar cultura do equipamento
+        cursor.execute("""
+            SELECT c.nome
+            FROM Equipamento e
+            LEFT JOIN Cultura c ON e.id_cultura = c.id_cultura
+            WHERE e.id_equipamento = ?
+        """, (estufa_id,))
+        result = cursor.fetchone()
+        if result and result[0]:
+            cultura = result[0]
+
+        # Buscar últimas leituras
         cursor.execute("""
             SELECT l.valor, ts.nome
             FROM Leitura l
@@ -1073,14 +1086,12 @@ def _render_estufa_card(estufa_nome, state, db):
         """, (estufa_id,))
         leituras_recentes = cursor.fetchall()
 
-        # Atualizar valores com dados do banco
+        # Extrair valores
         for valor, tipo in leituras_recentes:
             if tipo == 'Temperatura':
                 temp_atual = float(valor)
-                state['temp'] = temp_atual  # Sincronizar session_state
             elif tipo == 'Umidade':
                 humid_atual = float(valor)
-                state['humid'] = humid_atual  # Sincronizar session_state
 
     # Determinar status para o badge
     temp_quality = get_quality(temp_atual, 'temperatura')
@@ -1128,9 +1139,6 @@ def _render_estufa_card(estufa_nome, state, db):
             LIMIT 2
         """, (estufa_id,))
         alertas_ativos = cursor.fetchall()
-
-    # Obter cultura
-    cultura = state.get('cultura', 'N/A')
 
     # Renderizar card
     st.markdown(f"""
@@ -1186,33 +1194,21 @@ def _render_estufa_card(estufa_nome, state, db):
                 st.success(f"💨 **Ventilador Ligado**", icon="✅")
                 st.caption(f"↳ {motivo}")
 
-    # Ciclo ativo (se houver)
-    if state.get('ciclo_ativo'):
-        ciclo_icons = {
-            'aquecimento': '🔥',
-            'resfriamento': '❄️',
-            'secagem': '💨',
-            'umidificacao': '💦',
-            'estavel': '✅'
-        }
-        icon = ciclo_icons.get(state['ciclo_ativo'], '⚙️')
-        ciclo_nome = state['ciclo_ativo'].replace('_', ' ').title()
-        contador = state.get('ciclo_contador', 0)
-        tempo_restante = (6 - contador) * 5
-        st.caption(f"{icon} {ciclo_nome} ({contador}/6 - ~{tempo_restante}s)")
+    # Status dos Atuadores (baseado apenas em dados do banco)
+    status_text = "✅ Estável"
 
-    # Anomalia ativa (se houver)
-    if state.get('anomalia_sensor'):
-        st.markdown("---")
-        anomalia_tipo = state['anomalia_sensor']
-        contador_anomalia = state.get('anomalia_contador', 0)
+    if atuadores_ativos:
+        ventilador_ligado = any(a[0] == 'Ventilador' for a in atuadores_ativos)
+        bomba_ligada = any(a[0] == 'Bomba' for a in atuadores_ativos)
 
-        if anomalia_tipo == 'oscilacao':
-            st.error(f"📡 **Sensor Oscilando!**", icon="🚨")
-            st.caption(f"↳ Leituras erráticas (~{contador_anomalia * 5}s restantes)")
-        elif anomalia_tipo == 'travado':
-            st.error(f"⏸️ **Sensor Travado!**", icon="🚨")
-            st.caption(f"↳ Mesmo valor (~{contador_anomalia * 5}s restantes)")
+        if ventilador_ligado and bomba_ligada:
+            status_text = "💨💦 Ventilando e Irrigando"
+        elif ventilador_ligado:
+            status_text = "💨 Ventilando"
+        elif bomba_ligada:
+            status_text = "💦 Irrigando"
+
+    st.caption(status_text)
 
 # ========================================
 # NOVOS COMPONENTES DO DASHBOARD
@@ -1591,24 +1587,7 @@ def main():
     # Auto-refresh de 5 segundos automático
     st_autorefresh(interval=5000, key="datarefresh")
 
-    # Inserir leitura simulada (apenas para SQLite)
-    if db.db_type == 'sqlite':
-        reading = insert_simulated_reading(db)
-        if reading:
-            # Mostrar toasts separados para temperatura e umidade
-            estufa = reading['estufa']
-
-            # Toast para temperatura
-            if reading['temperatura']['qualidade'] == 'Critico':
-                st.toast(f"🚨 {estufa}: Temperatura CRÍTICA! {reading['temperatura']['valor']:.1f}°C", icon="🔴")
-            elif reading['temperatura']['qualidade'] == 'Alerta':
-                st.toast(f"⚠️ {estufa}: Temperatura em Alerta! {reading['temperatura']['valor']:.1f}°C", icon="⚠️")
-
-            # Toast para umidade
-            if reading['umidade']['qualidade'] == 'Critico':
-                st.toast(f"🚨 {estufa}: Umidade CRÍTICA! {reading['umidade']['valor']:.1f}%", icon="🔴")
-            elif reading['umidade']['qualidade'] == 'Alerta':
-                st.toast(f"⚠️ {estufa}: Umidade em Alerta! {reading['umidade']['valor']:.1f}%", icon="⚠️")
+    # Dashboard é apenas visualização - dados vêm do simulador IoT em background
 
     # Sidebar - Simples com menus apenas
     with st.sidebar:
@@ -1622,27 +1601,6 @@ def main():
             ["Dashboard", "Alertas", "Relatórios", "Configurações"],
             label_visibility="collapsed"
         )
-
-        st.markdown("---")
-
-        # Configurações de Simulação
-        st.markdown("### ⚙️ Simulação")
-
-        # Toggle para ativar/desativar anomalias e alertas críticos
-        if 'anomalias_ativas' not in st.session_state:
-            st.session_state.anomalias_ativas = False
-
-        anomalias_toggle = st.toggle(
-            "🚨 Anomalias e Alertas Críticos",
-            value=st.session_state.anomalias_ativas,
-            help="Ativa/desativa a simulação de anomalias críticas nos sensores e atuadores"
-        )
-        st.session_state.anomalias_ativas = anomalias_toggle
-
-        if anomalias_toggle:
-            st.caption("🔴 Anomalias ATIVADAS")
-        else:
-            st.caption("🟢 Apenas ciclos normais")
 
         st.markdown("---")
 
