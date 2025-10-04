@@ -179,35 +179,27 @@ class DashboardApp:
             with cols[idx]:
                 EstufaCard.render(estufa_data)
 
-        # Gráfico de histórico de temperatura
+        # Gráfico comparativo de temperatura e umidade
         st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("### 📈 Histórico de Temperatura das Estufas")
+        st.markdown("### 📊 Comparativo de Temperatura e Umidade por Estufa")
 
-        # Buscar dados de histórico
-        temp_history = self.leitura_repo.get_temperature_history(limit=100)
+        # Preparar dados para o gráfico
+        df_estufas = pd.DataFrame(estufas_data)
 
-        if temp_history:
-            # Converter para DataFrame
-            df = pd.DataFrame(temp_history)
+        # Criar colunas para exibir dois gráficos lado a lado
+        col1, col2 = st.columns(2)
 
-            # Ordenar por data (do mais antigo para o mais recente)
-            df = df.sort_values('data_hora')
+        with col1:
+            st.markdown("#### 🌡️ Temperatura (°C)")
+            # Gráfico de barras de temperatura
+            chart_data_temp = df_estufas.set_index('nome')['temperatura']
+            st.bar_chart(chart_data_temp, height=300)
 
-            # Converter data_hora para datetime
-            df['data_hora'] = pd.to_datetime(df['data_hora'])
-
-            # Criar pivot table para ter cada estufa como coluna
-            df_pivot = df.pivot_table(
-                index='data_hora',
-                columns='estufa',
-                values='temperatura',
-                aggfunc='mean'
-            )
-
-            # Exibir gráfico de linha
-            st.line_chart(df_pivot, height=400)
-        else:
-            st.info("Sem dados históricos disponíveis")
+        with col2:
+            st.markdown("#### 💧 Umidade (%)")
+            # Gráfico de barras de umidade
+            chart_data_umid = df_estufas.set_index('nome')['umidade']
+            st.bar_chart(chart_data_umid, height=300)
 
         # Footer moderno - Dark Mode
         st.markdown("<br>", unsafe_allow_html=True)
