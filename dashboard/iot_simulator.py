@@ -125,12 +125,24 @@ class IoTSimulator:
         if not equipment_id:
             return current_value
 
+        # Buscar nome do equipamento
+        self.cursor.execute("""
+            SELECT nome
+            FROM Equipamento
+            WHERE id_equipamento = ?
+        """, (equipment_id,))
+        result = self.cursor.fetchone()
+        if not result:
+            return current_value
+
+        equipment_name = result[0]
+
         # Buscar atuadores ativos deste equipamento
         active_actuators = self.controller.get_active_actuators()
 
         delta = 0.0
         for actuator in active_actuators:
-            if actuator['id_equipamento'] != equipment_id:
+            if actuator['equipamento'] != equipment_name:
                 continue
 
             tipo_atuador = actuator['tipo']
