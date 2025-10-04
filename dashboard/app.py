@@ -6,6 +6,8 @@ import streamlit as st
 import sys
 from pathlib import Path
 import time
+import pandas as pd
+from datetime import datetime
 
 # Adicionar diretório raiz ao path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -176,6 +178,36 @@ class DashboardApp:
         for idx, estufa_data in enumerate(estufas_data):
             with cols[idx]:
                 EstufaCard.render(estufa_data)
+
+        # Gráfico de histórico de temperatura
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("### 📈 Histórico de Temperatura das Estufas")
+
+        # Buscar dados de histórico
+        temp_history = self.leitura_repo.get_temperature_history(limit=100)
+
+        if temp_history:
+            # Converter para DataFrame
+            df = pd.DataFrame(temp_history)
+
+            # Ordenar por data (do mais antigo para o mais recente)
+            df = df.sort_values('data_hora')
+
+            # Converter data_hora para datetime
+            df['data_hora'] = pd.to_datetime(df['data_hora'])
+
+            # Criar pivot table para ter cada estufa como coluna
+            df_pivot = df.pivot_table(
+                index='data_hora',
+                columns='estufa',
+                values='temperatura',
+                aggfunc='mean'
+            )
+
+            # Exibir gráfico de linha
+            st.line_chart(df_pivot, height=400)
+        else:
+            st.info("Sem dados históricos disponíveis")
 
         # Footer moderno - Dark Mode
         st.markdown("<br>", unsafe_allow_html=True)

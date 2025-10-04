@@ -89,3 +89,22 @@ class LeituraRepository(BaseRepository):
         if rows:
             return rows[0]['total']
         return 0
+
+    def get_temperature_history(self, limit: int = 50) -> list:
+        """Retorna histórico de temperatura de todas as estufas"""
+        query = """
+            SELECT
+                e.nome as estufa,
+                l.valor as temperatura,
+                l.data_hora,
+                ts.nome as tipo_sensor
+            FROM Leitura l
+            JOIN Sensor s ON l.id_sensor = s.id_sensor
+            JOIN Equipamento e ON s.id_equipamento = e.id_equipamento
+            JOIN Tipo_Sensor ts ON s.id_tipo_sensor = ts.id_tipo_sensor
+            WHERE ts.nome = 'Temperatura'
+            ORDER BY l.data_hora DESC
+            LIMIT ?
+        """
+        rows = self._execute_query(query, (limit,))
+        return [dict(row) for row in rows]
